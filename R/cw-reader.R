@@ -28,16 +28,32 @@ sparse.proj <- mclapply(all.filez,function(f){
     saveRDS(proj,file="~/sparse.RDS")
 }
 
+
 source("R/cw-renamer.R")
+traits.drop=c("mpo_gwas2","mpo_meta","pr3_gwas2","pr3_meta", # unpublished
+"dm_myogen", "jdm_myogen", "myositis_myogen",  "NMO_combined", "NMO_IgGNeg",  "NMO_IgGPos", "pm_myogen", "renton_mg", "renton_mg_early", "renton_mg_late", # ssimp exists
+"anca_Neg",  "egpa", "mpo_Pos", # lmm exists
+"CD_prognosis"
+##              ,"span_psa","na_psa" # imputed
+##              ,"dm_myogen","jdm_myogen","pm_myogen" # imputed
+##              ,"NMO_combined","NMO_IgGNeg","NMO_IgGPos" # imputed
+              )
 reader <- function(what=c("sparse","fullfat")) {
     what <- match.arg(what)
     proj <- readRDS(switch(what,
                            fullfat="~/share/as_basis/basis-projection/results/13_traits.RDS",
-                           sparse="~/share/as_basis/basis-projection/results/13_trait-sparse.RDS"))
+                           sparse="~/share/as_basis/basis-projection/results/13_trait-sparse_with_meta.RDS"
+                                        #~/share/as_basis/basis-projection/results/13_trait-sparse.RDS"
+                           ))
     ## attempt to add categories
-    proj  %<>% rename.traits()  %<>% rename.cats()
-    setnames(proj,"p","p.value")
-    proj[,fdrcat:=sub("UKBB_NEALE|GWAS","general",category)]
+    ## proj  %<>% rename.traits()  %<>% rename.cats()
+    proj <- proj[!(category %in% c("DELETE","tachmazidou_osteo")) &
+                 !(trait %in% traits.drop)]
+    proj[,trait.label:=gsub(" ssimp|NMO|EGPA|AAV","",trait.label)]
+    proj[,category.label:=ifelse(trait.label==category,"",category)]
+    setnames(proj,"p","p.value",skip_absent=TRUE)
+    proj[,fdrcat:=ifelse(category %in% c("Geneatlas","Geneatlas_Cancer","Cytokines","Geneatlas_ICD"),
+                         category, "general")]
     proj[,newfdr:=p.adjust(p.value,method="BH"),by=c("fdrcat","PC")]
     proj[,fdr.overall:=p.adjust(p.overall,method="BH"),by=c("fdrcat","PC")]
     proj

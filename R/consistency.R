@@ -33,6 +33,7 @@ wcor <- function(x,y,w,nrep=100) {
     pnorm(abs(z),lower.tail=FALSE) * 2
 }
     
+## consistency
 fcons <- function(dt,res,label) {
     dt2 <- merge(dt[!is.na(beta)],
                  rotuse[,.(pid,centers,rot,PC)],
@@ -40,13 +41,15 @@ fcons <- function(dt,res,label) {
     dt2[,betas:=beta*shrinkage]
     ## summarise
     SUMM <- dt2[,p.wcors:=wcor(rot,betas,shrinkage), by=c("PC","trait")]
+    SUMM <- unique(SUMM[,.(PC,trait,p.wcors)])
     ## add in pc sig
-    SUMM <- merge(SUMM,res[,.(PC,trait,p.value,newfdr)],by=c("PC","trait"))
+    SUMM <- merge(SUMM,unique(res[,.(PC,trait,p.value,newfdr)]),by=c("PC","trait"))
     SUMM[,cutfdr:=cut(newfdr,c(0,0.001,0.01,0.1,1))]
     SUMM[,cat:=label]
     copy(SUMM)
 }
 
+## plotting
 library(cowplot); theme_set(theme_cowplot())
 plotsumm <- function(...,var="p.wcors") {
     tmp <- rbind(...,fill=TRUE)
@@ -55,7 +58,7 @@ plotsumm <- function(...,var="p.wcors") {
     levels(tmp$cutfdr) <- c("<0.01","<0.1","<0.5","<1")
     tmp[,logp:=-log10(tmp[[var]])]
     ## tmp[,logp:=(tmp[[var]])]
-    ggplot(tmp, aes(x=cutfdr,
+    ggplot(tmp[!is.na(newfdr)], aes(x=cutfdr,
                     y=logp,
                     fill=cat)) +
         geom_boxplot(notch=TRUE,coef=1, pch=15) +
@@ -105,7 +108,7 @@ rotuse[,centers:=beta.centers[pid]]
 
 ################################################################################
 ## load UKBB data
-res1 <- proj[category=="UKBB_NEALE"]
+res1 <- proj[category=="UKBB"]
 
 ## significant traits
 wanted1 <- unique(res1[newfdr<0.01,]$trait) #   %>% sub("SRD.","",.)
@@ -121,7 +124,7 @@ SUMM1 <- fcons(DT1,res1,"UKBB")
 ################################################################################
 
 ## all the other projected GWAS
-res2 <- proj[category=="GWAS"]
+res2 <- proj[fdrcat=="general" & category!="UKBB"]
 wanted <- res2$trait  %>% unique()
 wanted
 DT2=readraw(wanted,pids=rownames(use.pca))
@@ -130,13 +133,23 @@ SUMM2 <- fcons(DT2,res2,"GWAS")
 ################################################################################
 
 ## bloods
-res3 <- proj[fdrcat=="ASTLE"]
-wanted <- res3$trait  %>% unique()
-wanted
+## wanted <- res3$trait  %>% unique()
+## wanted
+wanted <- c('pdw','mpv','plt','irf','ret','rdw','hct','mch','mono','baso','eo','neut','lymph')  %>% paste0("ASTLE:",.)
 DT3=readraw(wanted,pids=rownames(use.pca))
+sdt <- split(DT3,DT3$trait)
+res3 <- lapply(sdt, function(x) project.sparse(x$beta, x$seb, x$pid))
+for(nm in names(sdt))
+    res3[[nm]][,trait:=nm]
+res3 %<>% rbindlist()
+setnames(res3,"p","p.value")
+res3[,newfdr:=p.adjust(p.value,method="BH"),by="PC"]
+
 SUMM3 <- fcons(DT3,res3,"Blood counts")
 
-plotsumm(SUMM,SUMM2,SUMM3)
+plotsumm(SUMM1,SUMM2,SUMM3)
+SUMM3[p.wcors<1e-3]
+
 ################################################################################
 
 ## cytokines
@@ -149,7 +162,16 @@ SUMM4 <- fcons(DT4,res4,"Cytokines")
 ################################################################################
 
 ## Roederer
-res5 <- proj[grepl("Flow",category)]
+traits <- list.files(DATA_DIR,pattern="roederer.*_source.RDS")  %>%
+  sub("_source.RDS","",.)
+DT5=readraw(traits,pids=rownames(use.pca))
+sdt <- split(DT5,DT5$trait)
+res5 <- lapply(sdt, function(x) project.sparse(x$beta, x$seb, x$pid))
+for(nm in names(sdt))
+    res5[[nm]][,trait:=nm]
+res5 %<>% rbindlist()
+setnames(res5,"p","p.value")
+res5[,newfdr:=p.adjust(p.value,method="BH"),by="PC"]
 wanted <- res5$trait  %>% unique()
 wanted
 DT5=readraw(wanted, pids=rownames(use.pca))
