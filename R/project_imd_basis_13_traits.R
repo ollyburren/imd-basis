@@ -27,7 +27,7 @@ proj <- mclapply(all.filez,function(f){
   x<-cupcake::project_basis(dat,sDT,pc.emp,trait)
   ## optional save file with shrinkages for use with fdr approach for novel associations
   #saveRDS(x$data,file=file.path(OUT_DIR,sprintf("%s_source.RDS",trait)))
-  ## optional save file with missing SNPs for comparison 
+  ## optional save file with missing SNPs for comparison
   #saveRDS(x$missing,file=file.path(OUT_DIR,sprintf("%s_missing.RDS",trait)))
   x$proj
 },mc.cores=8)
@@ -59,6 +59,10 @@ sparse.proj <- mclapply(all.filez,function(f){
 
 sparse.proj <- rbindlist(sparse.proj)
 saveRDS(sparse.proj,SPARSE_BASIS_PROJECTION_FILE)
+meta <- readRDS('~/share/as_basis/basis-projection/support/projection_meta.RDS')
+sparse.proj <- readRDS(SPARSE_BASIS_PROJECTION_FILE)
+M<-merge(meta,sparse.proj,by='trait',all.x=TRUE)
+saveRDS(M,gsub('sparse','sparse_with_meta',SPARSE_BASIS_PROJECTION_FILE))
 
 if(FALSE){
   ## compare projections for both methods - possible supp figure
