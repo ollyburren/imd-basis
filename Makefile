@@ -3,7 +3,7 @@ FPATH=figures # path to figures dir
 ## file to store sparse basis driver snps
 SPARSEDRIVERS=/home/cew54/share/as_basis/sparse-basis/basis-sparse-0.999.RData
 ## change this, and everything changes, because new results
-.DEPENDS=R/cw-reader.R R/cw-renamer.R R/cw-files.R
+.DEPENDS=R/cw-reader.R R/cw-renamer.R R/cw-files.R R/cw-colours.R
 # ## obsdata is the file of significant results
 # OBSDATA=$(HOME)/basis13-delta-fdr0.01.csv
 
@@ -18,6 +18,10 @@ $(SPARSEDRIVERS) : R/make-sparse-basis-driver-snps-13.R
 figures/suppfig-consistency.pdf : R/consistency.R $(SPARSEDRIVERS)
 	qR.rb -r $< 
 
+figures/figure2-hclust-shrinkage.png: R/figure2-cluster-with-without-shrinkage.R $(.DEPENDS)
+	Rscript $< > $(<)out 2>&1
+
+
 
 # $(OBSDATA) : extract-data-for-paulk.R $(.DEPENDS)
 # 	Rscript $< > $(<)out 2>&1
@@ -27,9 +31,6 @@ figures/suppfig-consistency.pdf : R/consistency.R $(SPARSEDRIVERS)
 
 # /home/cew54/sparse-projections.RDS: project.R
 # 	qR.rb -r -c 2 $< > $(<)out 2>&1
-
-# figures/figure2-hclust-shrinkage.png: figure2-cluster-with-without-shrinkage-sparse.R $(.DEPENDS)
-# 	Rscript $< > $(<)out 2>&1
 
 # figures/figure3-big-cluster.pdf : figure3-cluster-everything-sparse.R $(.DEPENDS) $(OBSDATA)
 # 	Rscript $< > $(<)out 2>&1
