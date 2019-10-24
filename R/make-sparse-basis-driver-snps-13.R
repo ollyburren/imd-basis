@@ -168,7 +168,7 @@ project.sparse <- function(beta,seb,pids) {
     if(length(pids) < 0.95 * nrow(rot.pca))
         warning("more than 5% sparse basis snps missing")
     b <- beta * shrinkage[pids] - beta.centers[pids] # * shrinkage[pids]
-    proj <- b %*% rot.pca[pids2,]
+    proj <- b %*% rot.pca[pids,]
     v <- seb * shrinkage[pids] * rot.pca[pids,]
     var.proj  <- t(v) %*% LD[pids,pids] %*% v  %>% diag()
     ctl <-  (-beta.centers[pids])  %*% rot.pca[pids,]
