@@ -104,15 +104,6 @@ W <- readRDS(BASIS_FILE)
 ## check pid order
 identical(rownames(W$rotation),rownames(NW$rotation))
 
-read.basis(basis.noweight)
-NW <- NW[setdiff(rownames(NW),"control"),setdiff(colnames(NW),"PC14")]
-rownames(NW)  %<>% make.names()
-data <- reader("weight")
-W <- dt2mat(proj[trait %in% rownames(NW) & PC %in% colnames(NW)],
-            trait ~ PC,value.var="delta")[,colnames(NW)]
-Wbasis <- data$basis[,colnames(NW)]
-W <- rbind(W,Wbasis)[rownames(NW),]
-
 ## BB paired traits
 BB_LU13 <- c(
   CD = 'crohns.disease',
@@ -126,7 +117,7 @@ VIT = 'vitiligo',
   asthma = 'asthma'
 )
 traits <- BB_LU13[intersect(names(BB_LU13),rownames(W$x))]  %>% paste0("UKBB_NEALE:SRD:",.)
-data <- readraw(traits,rownames(W$rotation))
+data <- read_raw(traits,rownames(W$rotation))
 head(data)
 data[,trait:=sub("UKBB_NEALE:SRD:","",trait)]
 data <- data[!is.na(trait)]
@@ -193,5 +184,6 @@ system(paste("montage -mode concatenate noweight.png weight.png -tile 2x",
              file.path(FPATH,"figure2-hclust-shrinkage.png")))
 unlink(paste0(names(L),".png"))
 
-system(paste("display",
+if(interactive())
+    system(paste("display",
              file.path(FPATH,"figure2-hclust-shrinkage.png")))

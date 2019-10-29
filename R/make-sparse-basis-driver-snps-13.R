@@ -9,6 +9,7 @@ library(cupcake)
 library(parallel)
 library(pheatmap)
 source("R/cw-files.R") # sets various file locations
+source("R/cw-utils.R")
 
 basis.DT<-get_gwas_data(TRAIT_MANIFEST_FILE,SNP_MANIFEST_FILE,GWAS_DATA_DIR,filter_snps_by_manifest=TRUE) 
 
@@ -122,12 +123,6 @@ man.DT <- man.DT[pid %in% pids.use]
 SNP.manifest <- copy(man.DT)[match(pids.use,pid)]
 s.DT <- split(man.DT, man.DT$chr)
 
-bdiag_with_dimnames <- function(lst) {
-    ret <- Matrix::bdiag(lst)
-    rownames(ret) <- colnames(ret) <- unlist(lapply(lst,rownames))
-    ret
-}
-
 LD <- lapply(names(pids.bychr), function(chr) {
         ss.file <- file.path(REF_GT_DIR, sprintf("%s.RDS", chr))
         sm <- readRDS(ss.file)
@@ -168,7 +163,7 @@ project.sparse <- function(beta,seb,pids) {
     if(length(pids) < 0.95 * nrow(rot.pca))
         warning("more than 5% sparse basis snps missing")
     b <- beta * shrinkage[pids] - beta.centers[pids] # * shrinkage[pids]
-    proj <- b %*% rot.pca[pids2,]
+    proj <- b %*% rot.pca[pids,]
     v <- seb * shrinkage[pids] * rot.pca[pids,]
     var.proj  <- t(v) %*% LD[pids,pids] %*% v  %>% diag()
     ctl <-  (-beta.centers[pids])  %*% rot.pca[pids,]
