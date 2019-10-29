@@ -8,3 +8,4 @@ REF_GT_DIR <- file.path(ROOT.DIR,'../GWAS/ctrl_gt/by.chr')
 SHRINKAGE_FILE <- file.path(ROOT.DIR,'support/13_trait_shrinkage.RDS')
 SNP_MANIFEST_FILE <- file.path(ROOT.DIR,'support/13_snp_manifest.RDS')
 TRAIT_MANIFEST_FILE <- file.path(ROOT.DIR,'support/13_trait_manifest.tab')
+SPARSE_BASIS_FILE <- "~/share/as_basis/sparse-basis/basis-sparse-0.999.RData"

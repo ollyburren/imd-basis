@@ -19,7 +19,7 @@ table(proj$category)
 
 shrink.DT<-readRDS(SHRINKAGE_FILE)
 
-(load(file="~/share/as_basis/sparse-basis/basis-sparse-0.999.RData"))
+(load(file=SPARSE_BASIS_FILE))
 
 ## basis <- x$basis  %>% reshape2::melt()  %>% as.data.table()
 ## setnames(basis,c("trait","PC","value"))
@@ -91,17 +91,10 @@ rotuse <- rotuse[use==TRUE,]
 rotuse[,c("chr","pos"):=tstrsplit(pid,":")  %>% lapply(.,as.numeric)]
 rotuse <- rotuse[order(PC,chr,pos),]
 ## find LD-dependent SNPs
-f <- function(dt) {
-    dt <- dt[order(abs(rot),decreasing=TRUE)]    
-    ldt <- LD[dt$pid,dt$pid]
-    diag(ldt) <- 0
-    ldt[lower.tri(ldt)] <- 0
-    dt$maxld <- apply(abs(ldt),2,max)
-    dt[maxld<0.1] # ie rsq < 0.01
-}
 cat("total sparse driver snps")
 table(rotuse$PC)
-rotuse %<>% split(.,.$PC) %>% lapply(.,f)  %>% rbindlist()
+rotuse <- rotuse[order(abs(rot),decreasing=TRUE)]    # prioritise largest rot pids
+rotuse %<>% split(.,.$PC) %>% lapply(.,indep_snps,LD=LD)  %>% rbindlist()
 cat("nearly-independent sparse driver snps")
 table(rotuse$PC)
 rotuse[,centers:=beta.centers[pid]]
@@ -118,7 +111,7 @@ wanted0 <- sample(unique(res1[newfdr>0.01,]$trait),length(wanted1)) #%>% sub("SR
 wanted <- unique(c(wanted1,wanted0))
 length(wanted)
 
-DT1=readraw(wanted,pids=rownames(use.pca))
+DT1=read_raw(wanted,pids=rownames(use.pca))
 SUMM1 <- fcons(DT1,res1,"UKBB")
 
 ################################################################################
@@ -127,28 +120,21 @@ SUMM1 <- fcons(DT1,res1,"UKBB")
 res2 <- proj[fdrcat=="general" & category!="UKBB"]
 wanted <- res2$trait  %>% unique()
 wanted
-DT2=readraw(wanted,pids=rownames(use.pca))
+DT2=read_raw(wanted,pids=rownames(use.pca))
 SUMM2 <- fcons(DT2,res2,"GWAS")
 
 ################################################################################
 
 ## bloods
-## wanted <- res3$trait  %>% unique()
-## wanted
-wanted <- c('pdw','mpv','plt','irf','ret','rdw','hct','mch','mono','baso','eo','neut','lymph')  %>% paste0("ASTLE:",.)
-DT3=readraw(wanted,pids=rownames(use.pca))
-sdt <- split(DT3,DT3$trait)
-res3 <- lapply(sdt, function(x) project.sparse(x$beta, x$seb, x$pid))
-for(nm in names(sdt))
-    res3[[nm]][,trait:=nm]
-res3 %<>% rbindlist()
-setnames(res3,"p","p.value")
-res3[,newfdr:=p.adjust(p.value,method="BH"),by="PC"]
+res3 <- proj[category=="ASTLE"]
+wanted <- res3$trait  %>% unique()
+wanted
 
+DT3=read_raw(wanted,pids=rownames(use.pca))
 SUMM3 <- fcons(DT3,res3,"Blood counts")
 
 plotsumm(SUMM1,SUMM2,SUMM3)
-SUMM3[p.wcors<1e-3]
+SUMM3[p.wcors<1e-5]
 
 ################################################################################
 
@@ -156,15 +142,18 @@ SUMM3[p.wcors<1e-3]
 res4 <- proj[grepl("Cytokine",category.label)]
 wanted <- res4$trait  %>% unique()
 wanted
-DT4=readraw(wanted, pids=rownames(use.pca))
+DT4=read_raw(wanted, pids=rownames(use.pca))
 SUMM4 <- fcons(DT4,res4,"Cytokines")
 
 ################################################################################
 
 ## Roederer
+res4 <- proj[category=="Roederer"]
+wanted <- res4$trait  %>% unique()
+wanted
 traits <- list.files(DATA_DIR,pattern="roederer.*_source.RDS")  %>%
   sub("_source.RDS","",.)
-DT5=readraw(traits,pids=rownames(use.pca))
+DT5=read_raw(traits,pids=rownames(use.pca))
 sdt <- split(DT5,DT5$trait)
 res5 <- lapply(sdt, function(x) project.sparse(x$beta, x$seb, x$pid))
 for(nm in names(sdt))
@@ -174,7 +163,7 @@ setnames(res5,"p","p.value")
 res5[,newfdr:=p.adjust(p.value,method="BH"),by="PC"]
 wanted <- res5$trait  %>% unique()
 wanted
-DT5=readraw(wanted, pids=rownames(use.pca))
+DT5=read_raw(wanted, pids=rownames(use.pca))
 SUMM5 <- fcons(DT5,res5,"Flow")
 
 ################################################################################

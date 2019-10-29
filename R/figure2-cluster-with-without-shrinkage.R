@@ -117,7 +117,7 @@ VIT = 'vitiligo',
   asthma = 'asthma'
 )
 traits <- BB_LU13[intersect(names(BB_LU13),rownames(W$x))]  %>% paste0("UKBB_NEALE:SRD:",.)
-data <- readraw(traits,rownames(W$rotation))
+data <- read_raw(traits,rownames(W$rotation))
 head(data)
 data[,trait:=sub("UKBB_NEALE:SRD:","",trait)]
 data <- data[!is.na(trait)]
