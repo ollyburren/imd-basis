@@ -32,9 +32,15 @@ proj[,trait.label:=sub("UKBB ","",trait.label)]
 proj[,lab:=paste(category.label,trait.label)]
 
 sigs <- proj[fdrcat=="general"][fdr.overall <= ifelse(category.label %in% c("UKBB","Psychiatric"),0.01,1) |
-               trait %in% c("UKBB_NEALE:SRD:ankylosing.spondylitis")]$lab  %>% unique()
+                                trait %in% c("UKBB_NEALE:SRD:ankylosing.spondylitis")]$lab  %>%
+                                        # c(.,c("Vasculitis MPO+  1","Vasculitis PR3+  1"))  %>%
+        unique()
 proj <- proj[lab %in% sigs]
 proj[,stars:=ifelse(newfdr<0.01,"*","")]
+
+## number of traits in fig 3
+length(unique(proj$trait))
+
 
 stars <- dt2mat(proj, trait ~ PC, value.var="stars")[,paste0("PC",1:13)]
 obsData <- dt2mat(proj, trait ~ PC, value.var="delta")[,paste0("PC",1:13)]
@@ -59,15 +65,6 @@ cols <- matrix(grnvi(21)[zp], nrow(b),ncol(b),dimnames=dimnames(b))
 D <-  get_dist(b,method="euclidean")  
 cl <- hclust(D,method="ward.D2")
 dd <- as.dendrogram(cl)
-k <- 4
-col4 <- tol5qualitative[c(1,2,3,5)]
-## col4 <- c("#015501","#010155","#015501","#010155")
-col4 <- rep(c("royalblue","grey30"),length.out=k)
-pch4 <- rep(c(19,18),length.out=k)
-cuts <- cutree(dd,k=k)[labels(dd)]
-colbb <- ifelse(grepl("UKBB",labels(dd)), "grey30",tol5qualitative[5])
-pchbb <- ifelse(grepl("UKBB",labels(dd)), 18,19)
-
 ## this group are largely null - push them towards one end of display rather than in middle (topologically this doesn't change dendrogram)
 nulls <-  c("UKBB basal cell carcinoma", "UKBB malignant melanoma", 
 "UKBB allergy hypersensitivity anaphylaxis", "UKBB eczema dermatitis", 
@@ -75,8 +72,17 @@ nulls <-  c("UKBB basal cell carcinoma", "UKBB malignant melanoma",
 "UKBB diabetes", "UKBB emphysema chronic bronchitis")
 dd %<>% rotate(., order=c(setdiff(labels(dd),nulls),intersect(labels(dd),nulls)))
 
+k <- 4
+col4 <- tol5qualitative[c(1,2,3,5)]
+## col4 <- c("#015501","#010155","#015501","#010155")
+col4 <- rep(c("dodgerblue","grey30"),length.out=k)
+pch4 <- rep(c(19,18),length.out=k)
+cuts <- cutree(dd,k=k)[labels(dd)]
+colbb <- ifelse(grepl("UKBB",labels(dd)),"grey20", "steelblue") #tol5qualitative[1])
+pchbb <- ifelse(grepl("UKBB",labels(dd)), 18,19)
+
 pdf("~/share/as_basis/figures/figure3-big-cluster.pdf",height=12,width=8,pointsize=10)
-par( mar = c(3,2,1,29))
+par( mar = c(0,0,0,29))
 ## par(mar = c(28,2,1,2))
 dd  %>% 
     dendextend::set("leaves_pch",pchbb)  %>%
@@ -91,7 +97,7 @@ M <- ncol(b)
 colored_labelled_boxes(colors = cols[labels(dd),M:1],
                        labels=stars[labels(dd),M:1],
                        dend=dd,sort_by_labels_order=FALSE,horiz=TRUE)
-rectcol <- tol5qualitative[1]
+rectcol <- "grey30" #tol5qualitative[1]
 rectx <- 0.15 #0.45 #0.25
 recth <- 1 #0.85
 recthdiff=-0.3

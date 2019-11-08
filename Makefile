@@ -7,37 +7,57 @@ DEPENDS= $(wildcard R/cw-*.R) #R/cw-reader.R R/cw-renamer.R R/cw-files.R R/cw-co
 # ## obsdata is the file of significant results
 # OBSDATA=$(HOME)/basis13-delta-fdr0.01.csv
 
+#! all : main targets - figures.pdf and suppfigures.pdf
 all: figures/figures.pdf figures/suppfigures.pdf
 
-#$(SPARSEDIVERS) figures/suppfig-consistency.pdf figures/figure2-hclust-shrinkage.png figures/figure3-big-cluster.pdf 
+#! clean : remove every file in figures
+clean:
+	rm -r figures/*
 
-# $(OBSDATA) figures/figure2-hclust-shrinkage.png figures/figure3-big-cluster.pdf figures/suppfig-forest-everything.pdf 
-## this is slow, but its a dependency, so don't wish to queue it
-$(SPARSEDRIVERS) : R/make-sparse-basis-driver-snps-13.R $DEPENDS)
+.PHONY : help
+help : Makefile
+	@sed -n 's/^#!//p' $<
+
+figures/figures.pdf : tex/figures.tex figures/figure2-hclust-rivas.png figures/figure3-big-cluster.pdf figures/fig4-pc1.pdf
+	cp tex/figures.tex tex/overview1.pdf figures/
+	cd figures && pdflatex figures && cd ..
+
+figures/suppfigures.pdf : tex/suppfigures.tex figures/suppfig-forest-pc13.pdf figures/suppfig-ukbb-sig-by-imd.pdf figures/suppfig-consistency.pdf figures/suppfig-sparsesig-qqplots.pdf
+	cp tex/suppfigures.tex figures/
+	cd figures && pdflatex suppfigures && cd ..
+
+################################################################################
+
+## sub targets
+
+## SPARSEDRIVERS : this is slow, but its a dependency, so don't wish to queue it
+$(SPARSEDRIVERS) : R/make-sparse-basis-driver-snps-13.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
 
-## this is slow, and nothing depends on it
+## these are slow, nothing else depends on them
 figures/suppfig-consistency.pdf : R/consistency.R $(SPARSEDRIVERS)
-	qR.rb -r $< 
+	qR.rb -j consistency -r $< 
 
-figures/figure2-hclust-shrinkage.png: R/figure2-cluster-with-without-shrinkage.R $(DEPENDS)
+## needs to be run after forests
+figures/fig6-pc3-mr.pdf : R/mr-analysis.R $(SPARSEDRIVERS) $(DEPENDS) figures/suppfig-forest-pc13.pdf 
+	qR.rb -j MR -r $< 
+
+## these are quick enough to run interactively
+figures/figure2-hclust-rivas.png: R/figure2+rivas.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
 
 figures/figure3-big-cluster.pdf : R/figure3-cluster.R $(DEPENDS) 
 	Rscript $< > $(<)out 2>&1
 
-figures/suppfig-forest-everything.pdf : R/suppfig-forests.R
+#! figures/fig4-pc1.pdf also makes suppfig forests
+figures/suppfig-forest-pc13.pdf figures/fig4-pc1.pdf : R/suppfig-forests.R
 	Rscript $< > $(<)out 2>&1
 
-figures/fig4-pc1-pc13.pdf : R/mr-analysis.R $(SPARSEDRIVERS) $(DEPENDS) 
+figures/suppfig-ukbb-sig-by-imd.pdf : R/ukbb-by-imd.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
 
-figures/figures.pdf : figures/figures.tex figures/figure2-hclust-shrinkage.png figures/figure3-big-cluster.pdf 
-	cd figures && pdflatex figures && cd ..
-
-figures/suppfigures.pdf : figures/suppfigures.tex figures/suppfig-forest-everything.pdf figures/suppfig-consistency.pdf
-	cd figures && pdflatex suppfigures && cd ..
-
+stats-sparse-drivers-significance.txt figures/suppfig-sparsesig-qqplots.pdf : R/table1.R
+	Rscript $< > $(<)out 2>&1
 
 # $(OBSDATA) : extract-data-for-paulk.R $(DEPENDS)
 # 	Rscript $< > $(<)out 2>&1

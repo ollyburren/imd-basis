@@ -3,7 +3,7 @@ source("R/cw-utils.R")
 source("R/cw-renamer.R")
 
 ## traits not used in this paper (unpublished/unimputed data)
-.traits.drop=c("mpo_gwas2","mpo_meta","pr3_gwas2","pr3_meta", # unpublished
+.traits.drop=c("mpo_gwas2","mpo", "mpo_meta","pr3_gwas2","pr3_meta", # unpublished
               "dm_myogen", "jdm_myogen", "myositis_myogen",  "NMO_combined", "NMO_IgGNeg",  "NMO_IgGPos", "pm_myogen", "renton_mg", "renton_mg_early", "renton_mg_late", # ssimp exists
               "anca_Neg",  "egpa", "mpo_Pos", # lmm exists
               "CD_prognosis" # uncorrected
@@ -16,7 +16,7 @@ reader <- function(what=c("sparse","fullfat")) {
     proj <- readRDS(switch(what,
                            fullfat="~/share/as_basis/basis-projection/results/13_traits.RDS",
                            sparse=#"~/share/as_basis/basis-projection/results/13_trait-sparse_with_meta.RDS"
-                             "~/share/as_basis/basis-projection/results/13_trait-sparse.RDS"
+                             "~/share/as_basis/basis-projection/results/13_trait-sparsev2.RDS"
                            ))
     ## attempt to add categories
     meta <- readRDS('~/share/as_basis/basis-projection/support/projection_meta.RDS')
@@ -30,6 +30,7 @@ reader <- function(what=c("sparse","fullfat")) {
     proj[trait.label=="systemic lupus erythematosis sle",trait.label:="SLE"]
     proj[trait=="li_ankspond",trait.label:="Turkish/Iranian"]
     proj[trait.label=="colitis not crohns or ulcerative colitis",trait.label:="colitis not Crohns or UC"]
+    proj[category=="Vasculitis",trait.label:=sub("  1","",trait.label)]
     proj[,category.label:=ifelse(trait.label==category,"",category)]
     ## drop some things not for publication
     proj <- proj[category %notin% c("DELETE","tachmazidou_osteo","asthma") &

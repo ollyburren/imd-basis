@@ -4,10 +4,14 @@ library(RColorBrewer)
 tol5qualitative= c("#332288","#88CCEE","#117733","#DDCC77","#CC6677")
 tol6qualitative=c("#332288", "#88CCEE", "#117733", "#DDCC77", "#CC6677","#AA4499")
 tol7qualitative=c("#332288", "#88CCEE", "#44AA99", "#117733", "#DDCC77", "#CC6677","#AA4499")
-    redblue<-colorRampPalette(c("red","white","blue"))
+
+redblue<-colorRampPalette(c("red","white","blue"))
     magblue<-colorRampPalette(c("magenta","white","blue"))
-    grnvi<-colorRampPalette(c("darkgreen","gray90","darkviolet"))
-    grnmag<-colorRampPalette(c("darkgreen","white","magenta"))
+    grnvi<-colorRampPalette(c("#00441b","gray90","#40004b"))
+grnmag<-colorRampPalette(c("#00441b","white","magenta"))
+
+brn <- "#543005"; grn <- "#003c30"
+brngrn <- colorRampPalette(c("#543005","white","#003c30"))
 
 # name=trait, entry=category
 ## https://www.r-bloggers.com/the-paul-tol-21-color-salute/

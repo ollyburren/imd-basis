@@ -9,9 +9,9 @@ proj[,cat.orig:=category]
 
 ## calculate FDR
 with(proj,table(category,fdrcat))
-proj[,variance:=var.proj]
 proj[,stars:=ifelse(newfdr<0.01,"*","")]
-proj[,FDR.overall:=p.adjust(p.overall,method="BH"),by=c("PC","fdrcat")]
+proj[,FDR.overall:=fdr.overall]
+proj[,variance:=var.proj]
 
 ## rename
 proj[is.na(trait.label),] # should be empty
@@ -82,7 +82,7 @@ proj <- bak[fdrcat=="general"]
 ## setnames(proj,c("trait.label","category.label"),c("trait","category"))
 proj[category.label=="Myasthenia gravis", category.label:="Myasthenia\ngravis"]
 
-pdf("~/share/as_basis/figures/suppfig-forest-everything.pdf",height=15,width=12)
+## pdf("~/share/as_basis/figures/suppfig-forest-everything.pdf",height=15,width=12)
 for(i in 1:13) {
     ipc=paste0("pc",i)
     iPC=paste0("PC",i)
@@ -93,15 +93,12 @@ for(i in 1:13) {
                      basis.DT,pc=iPC,
                      focal=traits,
                      order.within=TRUE)
-    print(p)
+    ggsave(paste0("figures/suppfig-forest-pc",i,".pdf"),plot=p,height=10,width=8,scale=1.5)
 }
-dev.off()
+## dev.off()
 
 if(interactive())
-    system("evince ~/share/as_basis/figures/suppfig-forest-everything.pdf &")
-
-## if(!interactive())
-##     q("no")
+    system("evince ~/share/as_basis/figures/suppfig-forest-pc1.pdf &")
 
 ################################################################################
 
@@ -177,6 +174,7 @@ tmp <- rbind(tmp,
              fill=TRUE)
 tmp.basis <- merge(basis.DT,tmp[,.(trait.label,aab)],by="trait.label",all.x=TRUE)
 
+
 ipc=paste0("pc",i)
 iPC=paste0("PC",i)
 traits <- sigtraits(iPC)
@@ -184,23 +182,31 @@ proj.dat=tmp[trait %in% c(traits) & trait!="ASTLE:eo",]
     pc1 <-  forest_labelled(tmp[trait %in% c(traits),],#,traits.i),],
                      tmp.basis,pc="PC1",
                      focal=traits)
-p.pc1 <- pc1 + 
-  geom_point(aes(y=0.15,x=trait.label,fill=aab,pch=aab),size=3,
-             data=subset(pc1$data,!is.na(pc1$data$aab))) +
-  ## theme(legend.position = c(0.8,0.8),legend.justification=c(1,0),
-  theme(legend.position = "top",legend.justification = "left")  +
-      guides(linetype="none") +
-  scale_shape_manual("AAB",breaks=c("No", "NP", "P"),
-                     values=c(No=21,NP=22,P=23,"TRUE"=23,"FALSE"=22)) +
-  scale_fill_manual("AAB",breaks=c("No","NP","P"),
-                      values=c(No="white",NP="lightblue",P="royalblue"))
-p.pc1
-save(p.pc1, file="~/basis-pc1-forest.RData")
-ggsave("figures/fig4-pc1.pdf",height=10,width=8)
+pc1$data$aab %<>% factor(., levels=c("No","NP","P"))
+levels(pc1$data$aab) <- c("None","Non-pathogenic","Pathogenic")
 
+theme_set(theme_cowplot(10))
+p.pc1 <- pc1 + 
+  geom_point(aes(y=0.15,x=trait.label,fill=aab,shape=aab),
+             size=4,
+             data=subset(pc1$data,!is.na(pc1$data$aab))) +
+  theme(legend.position = "top",
+        legend.justification = "right",
+        legend.text=element_text(size=rel(0.8)),
+        legend.title=element_text(size=rel(1)),
+        plot.title=element_blank())  +
+  scale_shape_manual("AAB",breaks=levels(pc1$data$aab),
+                     values=c(None=21,"Non-pathogenic"=22,"Pathogenic"=23,"TRUE"=23,"FALSE"=22)) +
+  scale_fill_manual("AAB",breaks=levels(pc1$data$aab),
+                    values=c(None="white","Non-pathogenic"="lightblue","Pathogenic"="royalblue","TRUE"="white","FALSE"="white")) +
+  guides(linetype="none",shape="legend",fill="legend") 
+p.pc1
+
+ggsave("figures/fig4-pc1.pdf",height=5,width=4,scale=1.8)
+
+save(p.pc1, file="~/basis-pc1-forest.RData")
 
 ################################################################################
-
 ## PC3
 
 proj <- bak[fdrcat=="general" | category=="Cytokines"]
@@ -248,180 +254,17 @@ save(p.pc13, file="~/basis-pc13-forest.RData")
 ggsave("figures/fig4-pc13.pdf",height=10,width=8)
 
 
-cowplot::plot_grid(p.pc1,NULL,p.pc3,nrow=1,
+pdf("figures/fig4-pc1-pc13.pdf",height=8*1.4,width=10*1.4)
+cowplot::plot_grid(p.pc1,NULL,p.pc13,nrow=1,
                    labels=c("a","","b"),
                    rel_widths=c(1,0.05,1))
-ggsave("figures/fig4-pc1-pc3.pdf",height=8,width=10,scale=1.4)
+dev.off()
+## ggsave("figures/fig4-pc1-pc13.pdf",height=8,width=10,scale=1.4)
 
 cowplot::plot_grid(p.pc1,p.pc3,p.pc13,nrow=1)
 ggsave("figures/fig4-pc1-pc3-pc13.pdf",height=8,width=12)
 
-
-################################################################################
-
-## junk below here
-
-################################################################################
-
-q()
+if(!interactive())
+    q("no")
 
 
-
-
-## general heatmap of basis
-library(pheatmap)
-m=dcast(basis.DT,trait~PC,value.var="delta")
-m2=as.matrix(m[,-1])
-rownames(m2) <- m$trait
-pheatmap(m2)
-
-sigs=proj[FDR<0.01]$trait  %>% unique()
-p=dcast(proj[PC %in% colnames(m2) & trait %in% sigs],trait~PC,value.var="delta")
-p2=as.matrix(p[,-1])
-rownames(p2) <- p$trait
-pheatmap(p2)
-
-t2=rbind(m2,p2)
-
-
-pheatmap(t11,file="~/11.pdf",width=8,height=10,fontsize=8)
-pheatmap(t13,file="~/13.pdf",width=8,height=10,fontsize=8)
-
-ggplot(basis.DT,aes(y=trait,x=PC,fill=delta)) + geom_tile() +
-    scale_fill_distiller(type="div")
-
-## bigr <- function(p,size.rel = 1) {
-##   p +
-##     theme(
-##       plot.title    = element_text(size = rel(2.0 * size.rel), hjust = 0),
-##       plot.subtitle = element_text(size = rel(1.5 * size.rel), hjust = 0),
-##       legend.title  = element_text(size = rel(1.8 * size.rel)),
-##       legend.text   = element_text(size = rel(1.3 * size.rel)),
-##       axis.title    = element_text(size = rel(1.5 * size.rel)),
-##       axis.text     = element_text(size = rel(1.2 * size.rel)),
-##       strip.text.x  = element_text(size = rel(1.8 * size.rel)),
-##       strip.text.y  = element_text(size = rel(1.8 * size.rel)),
-##       legend.key.height = unit(1.3 * size.rel, "line"),
-##       legend.key.width  = unit(1.3 * size.rel, "line")
-##     )
-## }
-################################################################################
-
-## by cat group
-sigcat.any <- unique(proj[(FDR<0.01 & category!="Basis" & category!="UKBB" & category!="cancer")]$category.label)  %>% setdiff(.,c("Infections","UKBB","Psychiatric"))
-for(cat in sigcat.any) {
-    pcs <- unique(proj[category.label==cat & FDR<0.01]$PC)  %>% as.character()
-    traits <- unique(proj[category.label %in% c(cat,"Basis") |
-                            (category.label=="UKBB" & PC %in% pcs & FDR < 0.01)]$trait)
-    pdf(paste0("~/forest-",cat,".pdf"),height=15,width=12)
-    forest_manypc(proj[trait %in% c(traits),],#,traits.i),],
-                  basis.DT,pc=pcs,
-                  focal=traits)
-    print(plot_grid(plotlist=plots))
-    dev.off()
-}
-
-proj[PC=="PC1" & category.label=="JIA",.(trait.label,n1)]
-
-## not sig
-proj[FDR<0.01]$trait.label->sigs
-nosigs <- setdiff(proj[!(category.label %in% c("UKBB","Infections"))]$trait.label,sigs)
-unique(proj[trait.label %in% nosigs,.(category.label,trait.label,n0,n1)])
-unique(proj[category.label!="UKBB" & trait.label %in% sigs,.(category.label,trait.label,n1)][order(n1)])
-
-for(i in 1:11) {
-    ipc=paste0("pc",i)
-    iPC=paste0("PC",i)
-    sigcat2  %<>%  setdiff(.,c("Infections","ahola−olli_cytokine","","Psychiatric"))
-    traits <- unique(proj[category.label %in% c(sigcat,"Basis") | (PC==iPC & FDR < 0.01)]$trait)
-    traits  %<>%  c(.,nm)  %>% unique()
-    ## AS custom
-    if("AS (Brown)" %in% traits)
-        traits  %<>% c("ankylosing spondylitis",.)  %>% unique
-    if( "ankylosing spondylitis" %in% traits)
-        traits  %<>% c("AS (Brown)",.)  %>% unique
-    proj.dat=proj[trait %in% c(traits),]
-    basis.dat=basis.DT
-    pc=iPC
-    focal=traits
-    fdr_thresh=0.01
-    ## p <- forest_everything(proj[trait %in% c(traits),],#,traits.i),],
-    p <- forest_labelled(proj[trait %in% c(traits),],#,traits.i),],
-                     basis.DT,pc=iPC,
-                     focal=traits)
-    print(p)
-}
-dev.off()
-    
-
-
-## individual customized
-forest_plot(proj.dat=proj[category %in% c("UKBB/GWAS"),],
-            basis.dat=basis.DT,
-            pc="PC1",
-            title="")  #%>% bigr()
-
-## MYGEN, PC1
-cats.pub=c("bb_disease","myogen","brown_as","cousminer_lada","ferreira_asthma","estrada_NMO","li_as","tian_infectious_disease","psyc_consortium")
-forest_plot(proj.dat=proj[cat.orig %in% cats.pub],
-                  basis.DT,pc="PC1",focal=all.traits[c('MYOGEN')])
-ggsave("~/myogen-pc1.pdf",height=10,width=8)
-forest_plot(proj.dat=proj[cat.orig %in% cats.pub],
-                  basis.DT,pc="PC11",focal=all.traits[c('MYOGEN')])
-ggsave("~/myogen-pc11.pdf",height=10,width=8)
-
-## AS, PC1
-forest_plot(proj.dat=proj[category %in% c("UKBB/GWAS","ank.spond")],
-                  basis.DT,pc="PC1",focal=all.traits[c('ank.spond')])
-## JIA, PC1, PC3
-for(i in c(1,3,4)) {
-forest_plot(proj.dat=proj[cat.orig %in% c(cats.pub,"bowes_jia_2019")],
-            basis.DT,pc="PC3",focal=all.traits[c('JIA')])
-forest_plot(proj.dat=proj[cat.orig %in% c(cats.pub,"bowes_jia_2019")],
-            basis.DT,pc="PC3",focal=all.traits[c('JIA')])
-}
-
-################################################################################
-
-## pairs
-proj=copy(bak)
-
-library(ggforce,quietly=TRUE)
-t1="type 1 diabetes"
-t2="cousminer lada"
-pairplot <- function(t1,t2) {
-    ## dat[is.na(variance),variance:=0]
-    d=merge(proj[trait==t1],proj[trait==t2],by="PC",suffixes=c(".1",".2"))
-    ggplot(d,aes(x=delta.1,y=delta.2,label=PC,col=PC)) +
-      geom_abline(colour="grey") +
-      geom_hline(yintercept = 0,colour="grey") +
-      geom_vline(xintercept = 0,colour="grey") +
-      geom_ellipse(aes(x0=delta.1,y0=delta.2,a=1.96*sqrt(variance.1),b=1.96*sqrt(variance.2),angle=0),lty=2) +
-      geom_point() +
-      geom_label() +
-      labs(x=t1,y=t2)
-}
-
-
-library(coloc)
-paircoloc <- function(t1,t2) {
-   ## dat[is.na(variance),variance:=0]
-    d=merge(proj[trait==t1],proj[trait==t2],by="PC",suffixes=c(".1",".2"))
-    ct=coloc.test.summary(b1=d$delta.1,b2=d$delta.2,
-                          V1=diag(d$variance.1),
-                          V2=diag(d$variance.2))
-    p=plot(ct) + geom_abline(slope=ct@result["eta.hat"]) + labs(x=t1,y=t2)
-    print(ct)
-    print(p)
-}
-     
-grep("AS",proj$trait,value=TRUE)
-pairplot("AS (Brown)","AS (Li)")
-paircoloc("AS (Brown)","AS (Li)")
-
-pairplot("type 1 diabetes","cousminer lada")
-paircoloc("type 1 diabetes","cousminer lada")
-paircoloc("type 1 diabetes","AS (Brown)")
-paircoloc("na psa","span psa")
-paircoloc("bowes psa","na psa")
-paircoloc("bowes psa","span psa")

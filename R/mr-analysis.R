@@ -14,12 +14,12 @@ todo <- proj[PC %in% c("PC3","PC13") &
                  | grepl("jia",trait) # comp to external data
              ) &
              (fdrcat %in% c("general","Cytokines") | trait=="ASTLE:eo")]
-data <- read_raw(unique(todo$trait))
+data <- read_raw(c(unique(todo$trait),
+                   c("UKBB_NEALE:SRD:type.1.diabetes",    
+                     "UKBB_NEALE:SRD:osteoarthritis")))
 
 ## sparse drivers
 (load(SPARSE_BASIS_FILE)) # use.pca, stats
-## source("~/Projects/auto-basis/scripts/annot-snps.R")
-## source("~/Projects/auto-basis/scripts/plots.R")
 pids.pc3 <- rownames(use.pca)[use.pca[,"PC3"]==TRUE]
 pids.pc13 <- rownames(use.pca)[use.pca[,"PC13"]==TRUE]
 pids.basis <- rownames(use.pca)
@@ -44,8 +44,8 @@ pnm <- "ASTLE:eo"; tnm <- "mpo.anca.positive.egpa_lmm"
 library(MendelianRandomization)
 library(Matrix)
 make_inp <- function(pids.use, LD, tnm, pnm, RTHR=sqrt(0.8)) {
-    xdata <- S[[tnm]][order(p.value),]
-    ydata <- S[[pnm]]
+    xdata <- S[[pnm]][order(p.value),] # exposure / predictor
+    ydata <- S[[tnm]] # outcome / trait
     myld <- LD[pids.use,pids.use]
     ## print(dim(myld))
     pids.use <- Reduce(intersect,list(pids.use,ydata$pid,xdata$pid))
@@ -66,7 +66,7 @@ make_inp <- function(pids.use, LD, tnm, pnm, RTHR=sqrt(0.8)) {
 }
 
 library(parallel)
-builder <- function(tnm, pnm, RTHR=sqrt(0.8)) {
+builder <- function(tnm, pnm, RTHR=sqrt(0.01)) {
     message(tnm, " - vs - ", pnm)
     ## which pc
     pc <- if(pnm=="ASTLE:eo") { "pc13" } else { "pc3" }
@@ -109,7 +109,8 @@ builder <- function(tnm, pnm, RTHR=sqrt(0.8)) {
 
     ## return(inp)
 
-    inp <- mclapply(pids, make_inp, BIGLD, tnm, pnm, RTHR=RTHR, mc.cores=length(pids))
+    inp <- mclapply(pids, make_inp, BIGLD, tnm=tnm, pnm=pnm,
+                    RTHR=RTHR, mc.cores=length(pids))
 }
 
 traits.pc3 <- todo[PC=="PC3" & fdr.overall<0.01 & newfdr< 0.01 &
@@ -126,31 +127,33 @@ names(INP.mig) <- paste("CK:MIG",traits.pc3,sep="_")
 
 INP <- c(INP.eo, INP.ip10, INP.mig)
 
-runmr <- function(x) {
+runmr <- function(x,reverse=FALSE) {
     if(is.list(x)) {
-        ret <- lapply(x, runmr)  %>% do.call("rbind",.)
+        ret <- lapply(x, runmr, reverse=reverse)  %>% do.call("rbind",.)
         ret$limit <- names(x)
         return(ret)
     }
+    message(x@exposure,"\t",x@outcome)
+    if(reverse) {
+        x <- make_inp(pids.use=x@snps, LD=x@correlation, tnm=x@exposure, pnm=x@outcome)
+    }
     ivw <- mr_ivw(x)
-    egg <- mr_egger(x)
+    ## egg <- mr_egger(x2)
     data.frame(exposure=ivw@Exposure,outcome=ivw@Outcome,
                ivw.est=ivw@Estimate,
                ivw.se=ivw@StdError,
                ivw.p=ivw@Pvalue,
-               nsnps=ivw@SNPs,
-               egger.est=egg@Estimate,
-               egger.se=egg@StdError.Est,
-               egger.p=egg@Pvalue.Est,
-               int.est=egg@Intercept,
-               int.se=egg@StdError.Int,
-               int.p=egg@Pvalue.Int)
+               nsnps=ivw@SNPs)
+               ## egger.est=egg@Estimate,
+               ## egger.se=egg@StdError.Est,
+               ## egger.p=egg@Pvalue.Est,
+               ## int.est=egg@Intercept,
+               ## int.se=egg@StdError.Int,
+               ## int.p=egg@Pvalue.Int)
 }
 
 MR <- lapply(INP, runmr)  #%>% do.call("rbind",.)
 MR[[1]]
-
-
 
 plotraw_df=function(object) {
     data.table(snp=object@snps,
@@ -200,23 +203,30 @@ plotraw <- function(mres) {
                                ymax = By + qnorm(0.975)*Byse,
                                xmin = Bx - qnorm(0.975)*Bxse,
                                xmax = Bx + qnorm(0.975)*Bxse)) +
-      geom_cross(size = 1,alpha=0.5,data=df$p3,colour=c1,shape=5) +
+      ## geom_cross(size = 1,alpha=0.5,data=df$p3,colour=c1,shape=5) +
+      geom_cross(size = 3,alpha=0.3,data=df$pc,colour=c3,shape=15) +
       geom_cross(size = 3,alpha=0.5,data=df$p4,colour=c1,shape=5) +
-      geom_cross(size = 1,alpha=0.5,data=df$t3,colour=c2,shape=4) +
+      ## geom_cross(size = 1,alpha=0.5,data=df$t3,colour=c2,shape=4) +
       geom_cross(size = 3,alpha=0.5,data=df$t4,colour=c2,shape=4) +
-      geom_cross(size = 3,alpha=0.5,data=df$pc,colour=c3,shape=15) +
-      geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$p3)$Estimate, color = c1,linetype=2) +
+      ## geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$p3)$Estimate, color = c1,linetype=2) +
       geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$p4)$Estimate, color = c1,linetype=1) +
-      geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$t3)$Estimate, color = c2,linetype=2) +
+      ## geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$t3)$Estimate, color = c2,linetype=2) +
       geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$t4)$Estimate, color = c2,linetype=1) +
       geom_abline(intercept = 0, slope = mr_ivw(INP[[nm]]$pc)$Estimate, color = c3)  +
       labs(x=mres$exposure[1], y=mres$outcome[1]) 
     p
 }
 
-
+library(ggplot2)
 plotraw(MR[[4]])
+plotraw(MR[["CK:IP10_UKBB_NEALE:SRD:hyperthyroidism.thyrotoxicosis" ]])
+plotraw(MR[[ "ASTLE:eo_UKBB_NEALE:SRD:asthma"]])
+plotraw(MR[[ "ASTLE:eo_UKBB_NEALE:SRD:crohns.disease"]])
 
+MREV <- lapply(INP[c("CK:IP10_UKBB_NEALE:SRD:hyperthyroidism.thyrotoxicosis",
+                     "ASTLE:eo_UKBB_NEALE:SRD:asthma")], runmr, reverse=TRUE)
+MREV
+MR[names(MREV)]
 ################################################################################
 
 ## overall results plot
@@ -225,12 +235,13 @@ MRdt <- rbindlist(MR)
 MRdt  %<>%  merge(., unique(todo[,.(trait, trait.label, category.label)]),
                   by.x="outcome",by.y="trait")
 MRdt[,limit:=factor(limit, levels=c("t3","t4","p3","p4","pc"))]
+MRdt[category.label=="Myasthenia gravis", category.label:="Myasthenia\ngravis"]
 
 
 c4="#ff775f" # exposure
 c2="#cc220f" # exposure
 c1 <- "#63acbe" # outcome
-c3 <- "grey10"
+c3 <- "OliveDrab" #"grey10"
 what="est"; x=MRdt[exposure=="ASTLE:eo"];limits.do=c("p3","p4","pc")
 
 library(ggplot2)
@@ -239,9 +250,11 @@ plotter <- function(x,what=c("est","int","grs"),
                     limits.do=c("pc","p3","t3")) {
     what <- match.arg(what)
 
+    ynm <- switch(what, est="ivw.est",int="int.est",grs="ahat")
     x[,x:=paste(trait.label,limit,category.label)]
-    ox <- with(x[limit=="pc"], x[order(ivw.est)])  %>%
-      lapply(., function(s) sapply(sort(limits.do), function(l) sub("pc",l,s)))  %>%
+    ## ox <- with(x[limit=="pc"], x[order(x[[ynm]])])  %>%
+    ox <- with(x[limit=="pc"], x[order(category.label,ivw.est)])  %>%
+      lapply(., function(s) sapply(sort(limits.do), function(l) sub("pc",l,s)))  %>% ## add other limits
       unlist()  %>%
       unique()
     x[,x:=factor(x,levels=ox)]
@@ -256,26 +269,26 @@ plotter <- function(x,what=c("est","int","grs"),
                     aes(x=limit,y=ahat,ymin=ahat-1.96*aSE,ymax=ahat+1.96*aSE,
                         shape=limit,colour=limit))
         )
-    p <- p + geom_vline(xintercept=seq(0.5,length(ox)+0.5,by=3),
+    p <- p + geom_vline(xintercept=seq(0.5,length(ox)+0.5,by=length(limits.do)),
                         size=0.5,colour="grey85") +
-      geom_point() +
+      geom_point(size=3) +
       geom_linerange() + 
       geom_hline(yintercept=0,col="grey",linetype=2)
     if(length(unique(x$exposure))>1) {
-        p <- p + facet_grid(category.label ~ exposure, scales="free",switch="y",space="free") 
+        p <- p + facet_grid(category.label ~ exposure, scales="free",switch="y",space="free_y") 
           } else {
-              p <- p + facet_grid(category.label ~ ., scales="free",switch="y",space="free")
+              p <- p + facet_grid(category.label ~ ., scales="free",switch="y",space="free_y")
           }
   p <- p + coord_flip() +
   background_grid(major="none") +
     scale_shape_manual("SNP selection",
                        values=c(p3=5,p4=4,t3=4,t5=4,pc=15),
-                       labels=function(s) c(p3="p<10-3",p4="p<10-4",pc="PC driver SNPs")[s]) +
+                       labels=function(s) c(p3="Exposure p<10-3",p4="Exposure p<10-4",pc="PC driver SNPs")[s]) +
     scale_colour_manual("SNP selection",
-                        values=c(p3=c4,p4=c2,t3=c1,t5=c1,pc=c3),
-                        labels=function(s) c(p3="p<10-3",p4="p<10-4",pc="PC driver SNPs")[s]) +
-    scale_x_discrete(labels=function(a) ifelse(grepl(median(limits.do),a),
-                                               sub(paste0(" ",median(limits.do),".*"),"",a),
+                        values=c(p3="DodgerBlue",p4=c2,t3=c2,t5=c2,pc=c3),
+                        labels=function(s) c(p3="Exposure p<10-3",p4="Exposure p<10-4",pc="PC driver SNPs")[s]) +
+    scale_x_discrete(labels=function(a) ifelse(grepl(limits.do[2],a),
+                                               sub(paste0(" ",paste(limits.do,collapse="|"),".*"),"",a) ,
                                                "")) +
     scale_y_continuous("Estimated causal effect") +
   theme(plot.title=element_text(hjust=0),
@@ -284,7 +297,7 @@ plotter <- function(x,what=c("est","int","grs"),
         ## axis.ticks.x=element_blank(),
         ## axis.text.x=element_blank(),
         legend.position="top",
-        axis.line.y=element_blank(),
+        axis.line=element_blank(),
         axis.ticks.y=element_blank(),
         axis.title.y=element_blank(),
         strip.text.y = element_text(angle=180))
@@ -305,176 +318,50 @@ plotter(x=MRdt[exposure %in% c("CK:IP10","CK:MIG")],limits.do=c("p3","p4","pc"))
 ggsave("figures/suppfig-mr-cytokines.pdf",height=8,width=8,scale=1.5)
 
 
+## add forest
+theme_set(theme_cowplot(10))
+(load("~/basis-pc3-forest.RData"))
+
+fdata <- as.data.table(p.pc3$data)[newfdr<0.01][,category.label:=as.character(category.label)]
+tmp <- rbind(MRdt[exposure %in% c("CK:IP10","CK:MIG"),
+                  .(exposure=sub("CK:","MR exposure=",exposure),
+                    category.label,trait.label,outcome, ivw.est,ivw.se,limit)],
+             fdata[,.(category.label,trait.label,outcome=trait,exposure=PC,
+                      ivw.est=-delta,ivw.se=sqrt(var.proj),limit="pc")],
+             data.table(category.label="Cytokines",trait.label=c("IP10","MIG"),
+                        outcome=c("CK:IP10","CK:MIG"),limit="p3",exposure="PC3"),
+             fill=TRUE)
+tmp$exposure %<>% as.factor()  %>% relevel(.,"PC3")
+tmp[,category.label:=factor(category.label,
+                            levels=c("Ank.Spond", "JIA", "Myasthenia\ngravis",
+                                     "PsA", "UKBB","Cytokines"))]
+plotter(x=tmp, limits.do=c("p3","pc")) +
+  scale_y_continuous(breaks=0) +
+  theme(legend.position="bottom",legend.justification="right",
+        axis.title.x=element_blank())
+ggsave("figures/fig6-pc3-mr.pdf",height=6,width=8)
+
+(load("~/basis-pc13-forest.RData"))
+
+fdata <- as.data.table(p.pc13$data)[newfdr<0.01][,category.label:=as.character(category.label)]
+tmp <- rbind(MRdt[exposure %in% c("ASTLE:eo"),
+                  .(exposure=sub("ASTLE:eo","MR exposure=eos count",exposure),
+                    category.label,trait.label,outcome, ivw.est,ivw.se,limit)],
+             fdata[,.(category.label,trait.label,outcome=trait,exposure=PC,
+                      ivw.est=delta,ivw.se=sqrt(var.proj),limit="pc")],
+             data.table(category.label="Blood counts",trait.label=c("eosinophils"),
+                        outcome=c("ASTLE:eo"),limit="p3",exposure="PC13"),
+             fill=TRUE)
+tmp$exposure %<>% as.factor()  %>% relevel(.,"PC13")
+tmp[,category.label:=factor(category.label,
+                            levels=c("Ank.Spond",  "EGPA","JIA", "Myositis",
+                                      "UKBB","Blood counts"))]
+plotter(x=tmp, limits.do=c("p3","pc")) +
+  scale_y_continuous(breaks=0) +
+  theme(legend.position="bottom",legend.justification="right",
+        axis.title.x=element_blank())
+ggsave("figures/fig5-pc13-mr.pdf",height=6,width=8,scale=1)
 
 
 ################################################################################
 
-## GRS
-
-make_score <- function(ivdata) {
-    if(is.list(ivdata)) {
-        ret <- lapply(ivdata, make_score)  %>% do.call("rbind",.)
-        ret$limit <- names(ivdata)
-        return(ret)
-    }
-    res <- grs.summary(w=ivdata@betaX,
-                b=ivdata@betaY,
-                s=ivdata@betaYse,
-                n=5000)   %>% do.call(data.frame,.)
-    res$exposure=ivdata@exposure
-    res$outcome=ivdata@outcome
-    res
-}
-
-
-
-THINP.eo <- lapply(traits.pc13, builder, pnm="ASTLE:eo", RTHR=sqrt(0.2))
-names(THINP.eo) <- paste("ASTLE:eo",traits.pc13,sep="_")
-THINP.ip10 <- lapply(traits.pc3, builder, pnm="CK:IP10")
-names(THINP.ip10) <-  paste("CK:IP10",traits.pc3, sep="_")
-THINP.mig <- lapply(traits.pc3, builder, pnm="CK:MIG")
-names(THINP.mig) <- paste("CK:MIG",traits.pc3,sep="_")
-
-THINP <- c(THINP.eo, THINP.ip10, THINP.mig)
-
-
-
-scores <- lapply(THINP, make_score)  %>% rbindlist()
-scores  %<>%  merge(., unique(todo[,.(trait, trait.label, category.label)]),
-                  by.x="outcome",by.y="trait")
-scores[,limit:=factor(limit, levels=c("t3","t4","p3","p4","pc"))]
-
-plotter(scores,what="grs",limits.do=c("p3","p4","pc"))
-
-
-## experimental data on IP10
-
-plasma.ip10 <- data.table(trait=c("jia_PO_19","jia_RFneg_19","jia_sys_19","SRD.rheumatoid.arthritis","SRD.type.1.diabetes","control"),
-                     ahat=c(719,	388,	106,	383,		242,	98),
-                     sd=c(1016,421, 108, 279, 105, 36),
-                     n=c(30,20,15,9,9,20))
-plasma.mig <- data.table(trait=c("jia_PO_19","jia_RFneg_19","jia_sys_19","SRD.rheumatoid.arthritis","SRD.type.1.diabetes","control"),
-                     ahat=c(111,	73,	23,	26,		6.3,8.4),
-                     sd=c(250,150,53,26,10,3),
-                     n=c(30,20,15,9,9,20))
-sf.ip10 <- data.table(trait=c("jia_PO_19","jia_RFneg_19","jia_sys_19","SRD.rheumatoid.arthritis","SRD.osteoarthritis"),
-                 ahat=c(4001,	5128,	2772,	4289,	197),
-                 sd=c(959,	  1759, 1443,	 3149,231),
-                 n=c(19,9,5,10,5))
-sf.mig <- data.table(trait=c("jia_PO_19","jia_RFneg_19","jia_sys_19","SRD.rheumatoid.arthritis","SRD.osteoarthritis"),
-                 ahat=c(2817,2266,85,673,13),
-                 sd=c(844,123,19,973,7.8),
-                 n=c(19,9,5,10,5))
-edata <- rbind(plasma.ip10[,c("cytokine","fluid"):=list("IP10","plasma")],
-               sf.ip10[,c("cytokine","fluid"):=list("IP10","sf")],
-               plasma.mig[,c("cytokine","fluid"):=list("MIG","plasma")],
-               sf.mig[,c("cytokine","fluid"):=list("MIG","sf")])
-edata[,aSE:=sd/sqrt(n)]
-
-use.traits <- unique(edata$trait)
-table(use.traits %in% MRdt$trait)
-
-
-
-### HERE
-
-
-pc3 <- x$proj[trait %in% grs.pred$trait & variable=="PC3",.(trait,ahat=-delta,aSE=sqrt(variance))]
-
-pc3[,what:="PC3"]
-plasma[,what:="plasma.pg.ml"]
-sf[,what:="synovial_fluid.pg.ml"]
-
-
-
-
-
-
-df=rbindlist(list(pc3[trait!="MIG",],plasma[trait!="control"],sf,grs.pred),fill=TRUE)[trait %in% use.traits]
-o <- order(plasma$ahat)
-df[,trait:=factor(trait,levels=c("SRD.osteoarthritis",plasma$trait[o]))]
-levels(df$trait)  %<>% sub("jia_sys_19","jia_systemic",.)  %>%
-  sub("SRD.osteoarthritis","osteoarthritis",.) %>%
-  sub("SRD.type.1.diabetes","type_1_diabetes",.)  %>%
-  sub("SRD.rheumatoid.arthritis","rheumatoid_arthritis",.)  %>%
-  sub("jia_PO_19","jia_oligoarticular",.)  %>%
-  sub("jia_RFneg_19","jia_polyarticular",.)  %>% 
-  sub("jia_RFpos_19","jia_polyarticular",.)
-
-
-p.grs <- ggplot(df,aes(x=trait,y=ahat,ymin=ahat-1.96*aSE,ymax=ahat+1.96*aSE)) +
-  geom_pointrange() +
-  facet_wrap(~what,scales="free_y",ncol=1) +
-  background_grid() +
-  geom_hline(aes(yintercept=0)) +
-  theme(axis.text.x=element_text(angle=45,hjust=1))
-
-ggsave("~/IP10.pdf",plot=p.grs,height=6,width=8)
-
-## compare weights and IP10 gwas coefficients
-SHRINKAGE_FILE <- '/home/ob219/share/as_basis/GWAS/support/ss_shrinkage_gwas_13_traits_0919.RDS'
-  shrink.DT <- readRDS(SHRINKAGE_FILE)
-setnames(shrink.DT,'ws_emp_shrinkage','shrinkage')
-tmp <- ip10[pid %in% rownames(rot.pca)[use.pca[,"PC3"]==TRUE]]
-tmp[,pc3.coef:=rot.pca[pid,"PC3"]]
-tmp <- merge(tmp,shrink.DT[,.(pid,shrink=shrinkage)],by="pid")
-## tmp[,shrink:=as.numeric(shrink)]
-p.coef <- ggplot(tmp,aes(x=-log(or),y=shrink*pc3.coef)) +
-  geom_point() +
-  geom_smooth(method="lm") +
-  labs(x="IP10 GWAS coefficient", y="PC3 coefficient") +
-  background_grid()
-
-plot_grid(p.pc3 + theme(axis.text.x=element_blank()) + ylab("PC3") + scale_y_reverse(),
-          plot_grid(p.coef,p.grs,nrow=2,rel_heights=c(.3,.7)),
-          rel_widths=c(.6,.4))
-ggsave("~/IP10.pdf",height=10,width=12)
-
-
-with(tmp,cor(-log(or),pc3.coef))
-
-0
-
-    ## scale_y_log10()
-
-## A named list with the following elements:
-## m is the number of SNPs used in the risk score.
-## n is the input sample size.
-## X2m is the chi squared test statistic for an m d.f. test in the testing dataset (all SNPs have independent effects).
-## R2m is the (pseudo) variance explained by the m d.f. model in the testing dataset.
-## ahat is the estimated coefficent for regressing the response onto the m SNP risk score.
-## aSE is the standard error.
-## X2rs is the chi squared test statistic for a 1 d.f. test for the risk score in the testing dataset.
-## R2rs is the (pseudo) variance explained by the risk score model in the testing dataset.
-## pval is the P-value for the 1 d.f. test.
-## Qrs is the (m-1) d.f. heterogeneity test statistic.
-## phet is the heterogeneity test P-value.
-
-## all predictive, except hypothyroidism and crohn's, all heterogenous
-
-## do same with PC4 driver snps only
-
-library(ggplot2)
-m <- merge(scores.basis,scores.pc4,by="nm",suffixes=c(".basis",".pc4"))
-m <- merge(m,scores.any,by="nm")
-p1=ggplot(m,aes(x=-log10(pval),y=-log10(pval.pc4))) + geom_point() + geom_abline()
-p2=ggplot(m,aes(x=-log10(pval),y=-log10(pval.basis))) + geom_point() + geom_abline()
-p3=ggplot(m,aes(x=-log10(pval.basis),y=-log10(pval.pc4))) + geom_point() + geom_abline()
-
-library(cowplot)
-plot_grid(p1,p2,p3)
-
-m <- merge(scores.any,scores.pc4,by="nm",suffixes=c(".any",".pc4"))
-ggplot(m,aes(x=-log10(pval.any),y=-log10(pval.pc4))) + geom_point() + geom_abline()
-
-## check input
-
-m=merge(data[trait=="CK.IP10",.(pid,beta,p.value,trait)],
-        data[trait!="CK.IP10",.(pid,beta,p.value,trait)],
-        by=c("pid"),suffixes=c(".ip10",""))
-
-ggplot(m[p.value<0.01 | p.value.ip10<0.01],aes(x=beta.ip10,y=beta,col=pid %in% pids.pc4)) + geom_point() + geom_abline() + geom_smooth(se=FALSE,method="lm") + facet_wrap(~trait,scales="free")
-
-ggplot(m[p.value<0.01 | p.value.ip10<0.01],aes(x=-log10(p.value.ip10),y=-log10(p.value),col=pid %in% pids.pc4)) + geom_point() + geom_abline() + geom_smooth(se=FALSE,method="lm") + facet_wrap(~trait,scales="free")
-
-ggplot(m[pid %in% pids.pc4 & (p.value<0.001 | p.value.ip10<0.001)],aes(x=beta.ip10,y=beta,col=trait)) + geom_point() + geom_abline() + geom_smooth(se=FALSE,method="lm") + facet_wrap(~trait)
