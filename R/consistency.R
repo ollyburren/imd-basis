@@ -44,7 +44,6 @@ fcons <- function(dt,res,label) {
     SUMM <- unique(SUMM[,.(PC,trait,p.wcors)])
     ## add in pc sig
     SUMM <- merge(SUMM,unique(res[,.(PC,trait,p.value,newfdr)]),by=c("PC","trait"))
-    SUMM[,cutfdr:=cut(newfdr,c(0,0.001,0.01,0.1,1))]
     SUMM[,cat:=label]
     copy(SUMM)
 }
@@ -65,7 +64,7 @@ plotsumm <- function(...,var="p.wcors") {
         facet_grid(.~cat) +
         background_grid("y","none") +
         xlab("FDR category") +
-        ylab("-log10 p") +
+        ylab("Spearman -log10 p") +
         scale_fill_discrete("Trait group") +
         theme(legend.position="none")
 }
@@ -148,8 +147,8 @@ SUMM4 <- fcons(DT4,res4,"Cytokines")
 ################################################################################
 
 ## Roederer
-res4 <- proj[category=="Roederer"]
-wanted <- res4$trait  %>% unique()
+res5 <- proj[category=="Roederer"]
+wanted <- res5$trait  %>% unique()
 wanted
 traits <- list.files(DATA_DIR,pattern="roederer.*_source.RDS")  %>%
   sub("_source.RDS","",.)
@@ -171,6 +170,15 @@ SUMM5 <- fcons(DT5,res5,"Flow")
 
 ################################################################################
 ## plot
-plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="p.wcors") 
-ggsave("~/share/as_basis/figures/suppfig-consistency.pdf",height=6,width=8)
+plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="p.wcors") +
+  geom_hline(yintercept=1,linetype="dashed",size=1)
+             
+ggsave("~/share/as_basis/figures/suppfig-consistency.pdf",height=6,width=8,scale=1.2)
 
+
+## check outliers
+filt <- function(...,fdr.lim=0.01,p.lim=0.1) {
+    tmp <- rbind(...,fill=TRUE)
+    tmp[newfdr < fdr.lim & p.wcors > p.lim, .(cat, trait,PC,newfdr,p.wcors)]
+}
+filt(SUMM1,SUMM2,SUMM4,SUMM5) 

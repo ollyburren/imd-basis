@@ -9,13 +9,13 @@ dt2mat <- function(dt,...) {
     m
 }
 
-indep_snps <- function(dt,LD,thin=TRUE,rthr=0.01) {
+indep_snps <- function(dt,LD,thin=TRUE,rthr=0.1) {
     ldt <- LD[dt$pid,dt$pid]
     diag(ldt) <- 0
     ldt[lower.tri(ldt)] <- 0
     dt$maxld <- apply(abs(ldt),2,max)
     if(thin)
-        dt <- dt[maxld<0.1] # ie rsq < 0.01
+        dt <- dt[maxld<rthr] # ie rsq < 0.01
     dt
 }
 

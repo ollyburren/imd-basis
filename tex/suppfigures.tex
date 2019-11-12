@@ -1,0 +1,80 @@
+\documentclass[11pt]{article}
+
+\usepackage{helvet}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{fullpage}
+\pagestyle{empty} % no page numbers 
+\usepackage{pgffor}
+\begin{document}
+
+\renewcommand{\figurename}{Supplementary Figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{suppfig-sparsebasis-coefficients.pdf}
+  \caption{Distributions of entries in the rotation matrix for each component PC1-PC13}
+  \label{sfig:2}
+\end{figure}
+
+ \begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{suppfig-ukbb-sig-by-imd}
+  \caption{}
+  \label{sfig:2}
+\end{figure}
+
+\foreach \n in {1,...,13}{
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{suppfig-forest-pc\n.pdf}
+  \caption{Forest plot of significant traits on component PC\n}
+  \label{sfig:\n}
+\end{figure}
+ }
+
+
+ 
+ \begin{figure}
+  \centering
+  TODO: proportionality
+  \caption{}
+  \label{sfig:2}
+\end{figure}
+
+ 
+ \begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{suppfig-consistency.pdf}
+  \caption{}
+  \label{sfig:2}
+\end{figure}
+
+% \begin{figure}
+%   \centering
+%   \includegraphics[width=\textwidth]{suppfig-mr-astle.pdf}
+%   \caption{}
+%   \label{sfig:3}
+% \end{figure}
+
+% \begin{figure}
+%   \centering
+%   \includegraphics[width=\textwidth]{suppfig-mr-cytokines.pdf}
+%   \caption{}
+%   \label{sfig:4}
+% \end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{suppfig-sparsesig-qqplots.pdf}
+  \caption{}
+  \label{sfig:4}
+\end{figure}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
