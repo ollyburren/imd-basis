@@ -128,7 +128,7 @@ Myositis,Yes,-,
 neuro myolitis optica,Yes in seropositive pts,Yes in seropositive pts,
 IgGPos_ssimp,Yes,Yes,
 IgGNeg_ssimp,No,No,
-PBC,No,Yes,
+primary billiary cholangitis,No,Yes,
 pernicious anaemia,Yes,Yes, - but only if caused by autoimmune gastritis
 PSC,No,No,
 psoriatic arthritis,No,No,
@@ -170,7 +170,7 @@ tmp[category.label=="Myasthenia gravis", category.label:="Myasthenia\ngravis"]
 tmp <- rbind(tmp,
              data.table(trait.label=c("primary billiary cholangitis","primary sclerosing cholangitis","IgA nephropathy","LADA"),
                         category.label=c("UKBB"),
-                        aab=c("No","NP","No","P")),
+                        aab=c("NP","No","No","P")),
              fill=TRUE)
 tmp.basis <- merge(basis.DT,tmp[,.(trait.label,aab)],by="trait.label",all.x=TRUE)
 

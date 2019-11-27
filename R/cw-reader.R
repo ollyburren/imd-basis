@@ -30,6 +30,7 @@ reader <- function(what=c("sparse","fullfat")) {
     proj[trait.label=="systemic lupus erythematosis sle",trait.label:="SLE"]
     proj[trait=="li_ankspond",trait.label:="Turkish/Iranian"]
     proj[trait.label=="colitis not crohns or ulcerative colitis",trait.label:="colitis not Crohns or UC"]
+    proj[trait=="birdshot_retinopathy",trait.label:="birdshot chorioretinopathy"]
     proj[category=="Vasculitis",trait.label:=sub("  1","",trait.label)]
     proj[,category.label:=ifelse(trait.label==category,"",category)]
     ## drop some things not for publication
