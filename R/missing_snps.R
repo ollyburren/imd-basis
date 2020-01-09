@@ -14,10 +14,6 @@ GWAS_DATA_DIR <- file.path(ROOT.DIR,'/sum_stats/')
 
 
 others <- 'SRC_FILE SSIMP_FILE  Label Category
-pm_myogen gwas_pm_new_ssimp PM  Myositis
-jdm_myogen  gwas_jdm_new_ssimp  JDM Myositis
-dm_myogen gwas_dm_new_ssimp  DM Myositis
-myositis_myogen  gwas_dmjdmpm_new_ssimp combined Myositis
 renton_mg_early YoungOnset_ssimp  Early_onset Myasthenia_gravis
 renton_mg_late  LateOnset_ssimp Late_onset  Myasthenia_gravis
 renton_mg  Overall_ssimp  _combined Myasthenia_gravis
@@ -49,9 +45,6 @@ ank_spond NA  International Ank.Spond
 ' %>% read.table(text=.,header=TRUE) %>% data.table
 
 library(cupcake)
-
-
-
 
 gwas.DT<-get_gwas_data(TRAIT_MANIFEST_FILE,SNP_MANIFEST_FILE,GWAS_DATA_DIR,filter_snps_by_manifest=TRUE)
 basis <- readRDS(BASIS_FILE)
@@ -89,12 +82,12 @@ all.res <- mclapply(1:nrow(others),function(i){
   ret[,c('trait','missing'):=list(trait,miss.count)][]
 },mc.cores=8) %>% rbindlist
 others[,trait:=sprintf("%s_%s",Category,Label) %>% gsub("^NA\\_","",.)]
-all.res[,tlabel:=NA]
+#all.res[,tlabel:=NA]
 #all.res[trait %in% others[!is.na(SSIMP_FILE),]$trait,tlabel:=trait]
 ## add labels to the ones that we impute
 all.res[,residuals:=pres(ori,filt)]
 all.res[,Z.res:=(residuals-mean(residuals))/sd(residuals),by=PC]
-all.res[,label:='']
+all.res[,tlabel:='']
 all.res[abs(Z.res)>1.96,tlabel:=trait]
 
 library(cowplot)
@@ -102,5 +95,6 @@ library(ggplot2)
 library(ggrepel)
 theme_set(theme_cowplot())
 pg <- ggplot(all.res[PC!='PC14',],aes(x=ori,y=filt,label=tlabel)) + geom_point() + facet_wrap(~PC,scales='free') +
-geom_abline(col='red',lty=2) + geom_label_repel(box.padding=1.5,cex=3.5,label.size=0.01) + xlab("Original Projection Score") + ylab("Tailored Projection Score")
+#geom_abline(col='red',lty=2) + geom_label_repel(box.padding=1.5,cex=3.5,label.size=0.01) + xlab("Original Projection Score") + ylab("Tailored Projection Score")
+geom_abline(col='red',lty=2) + geom_label_repel(cex=3.5,label.size=0.01) + xlab("Original Projection Score") + ylab("Tailored Projection Score")
 save_plot(file="~/tmp/missing.pdf",pg,base_height=9)

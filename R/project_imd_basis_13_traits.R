@@ -12,7 +12,6 @@ BASIS_FILE <- file.path(ROOT.DIR,'support/13_trait_basis.RDS')
 NOWEIGHT_BASIS_FILE <- file.path(ROOT.DIR,'support/13_trait_basis-noweight.RDS')
 DATA_DIR <- file.path(ROOT.DIR,'../basis-projection/project_13')
 FULL_BASIS_PROJECTION_FILE <- file.path(ROOT.DIR,'../basis-projection/results/13_trait.RDS')
-SPARSE_BASIS_PROJECTION_FILE <- file.path(ROOT.DIR,'../basis-projection/results/13_trait-sparsev2.RDS')
 
 pc.emp <- readRDS(BASIS_FILE)
 man.DT <- readRDS(SNP_MANIFEST_FILE)
@@ -66,10 +65,6 @@ M<-merge(meta,sparse.proj,by='trait',all.x=TRUE)
 saveRDS(M,gsub('sparse','sparse_with_meta',SPARSE_BASIS_PROJECTION_FILE))
 
 
-
-
-
-
 if(FALSE){
   ## compare projections for both methods - possible supp figure
   full.proj.delta <- (t(readRDS(FULL_BASIS_PROJECTION_FILE)) - pc.emp$x['control',]) %>% t
@@ -117,5 +112,48 @@ if(FALSE){
   plotme <- merge(tmp,M[category=='UKBB',.(PC,proj.neale=proj,trait=gsub("UKBB_NEALE:SRD:","",trait))],by=c('PC','trait'))
   library(cowplot)
   ggplot(plotme,aes(x=proj.neale,y=proj.ga)) + geom_point() + geom_abline(col='red',lty=2)
-
 }
+
+
+## replace uveitis results with imputed version
+
+old <- readRDS(SPARSE_BASIS_PROJECTION_FILE)
+newb <- old[trait!='hasnoot_uveitis_jia',]
+has <- readRDS("~/tmp/haasnoot_jia_uveitis_ssimp_meta.RDS")
+newb <- rbind(newb,has)
+
+## add in new jia data
+
+jia <- readRDS("~/tmp/sparse_proj_jia+pc.RDS")
+jia$with.pc<-NULL
+newb <- rbind(newb[-grep("^jia\\_",trait),],jia)
+SPARSE_BASIS_PROJECTION_FILE <- file.path(ROOT.DIR,'../basis-projection/results/13_trait-sparsev3.RDS')
+saveRDS(newb,SPARSE_BASIS_PROJECTION_FILE)
+meta <- readRDS('~/share/as_basis/basis-projection/support/projection_meta.RDS')
+M<-merge(meta,newb,by='trait',all.x=TRUE)
+saveRDS(M,gsub('sparse','sparse_with_meta',SPARSE_BASIS_PROJECTION_FILE))
+
+## create a table of results for projecting 13 traits used to construct the basis.
+
+ROOT.DIR <- '~/share/as_basis/basis-creation'
+GWAS_DATA_DIR <- file.path(ROOT.DIR,'/sum_stats/')
+bt.proj <- lapply(list.files(path=GWAS_DATA_DIR,full.names=TRUE),function(f){
+  trait <- basename(f) %>% gsub("([^_]+)\\_.*","\\1",.) %>% toupper
+  sprintf("Processing %s",trait) %>% message
+  dat <- fread(f)[pid %in% rownames(rot.pca),]
+  if(!any(names(dat)=='beta')){
+     if(any(names(dat)=='or')){
+        dat[,beta:=log(or)]
+     }else{
+        stop("GWAS input must have either an or or beta column")
+     }
+  }
+  ## remove instances where beta is infinite or missing
+  dat <- dat[!is.na(beta) | is.finite(beta),]
+  if(!any(colnames(dat)=='seb'))
+    dat[,seb:=abs(beta/qnorm(as.numeric(p.value)/2,lower.tail=FALSE))]
+  dat <- dat[!is.na(seb) & is.finite(seb),]
+  cupcake::project_sparse(beta=dat$beta,seb=dat$seb,pids=dat$pid)[,trait:=trait][]
+}) %>% rbindlist
+SPARSE_BASIS_TRAIT_FILE <- file.path(ROOT.DIR,'../basis-projection/results/13_trait-sparsev3_projections.RDS')
+saveRDS(bt.proj[,.(PC,proj,delta,trait)],SPARSE_BASIS_TRAIT_FILE)
