@@ -18,7 +18,7 @@ clean:
 help : Makefile
 	@sed -n 's/^#!//p' $<
 
-figures/figures.pdf : tex/figures.tex figures/figure2-hclust-rivas.png figures/figure3-big-cluster.pdf figures/fig4-pc1.pdf
+figures/figures.pdf : tex/figures.tex figures/figure2-hclust-rivas.png figures/figure3-big-cluster.pdf figures/fig4-pc1.pdf figures/fig6-pc3-mr.pdf
 	cp tex/figures.tex tex/overview1.pdf figures/
 	cd figures && pdflatex figures && cd ..
 
@@ -38,10 +38,6 @@ $(SPARSEDRIVERS) : R/make-sparse-basis-driver-snps-13.R $(DEPENDS)
 figures/suppfig-consistency.pdf : R/consistency.R $(SPARSEDRIVERS)
 	qR.rb -j consistency -r $< 
 
-## needs to be run after forests
-figures/fig6-pc3-mr.pdf : R/mr-analysis.R $(SPARSEDRIVERS) $(DEPENDS) figures/suppfig-forest-pc13.pdf 
-	qR.rb -j MR -r $< 
-
 ## these are quick enough to run interactively
 figures/figure2-hclust-rivas.png: R/figure2+rivas.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
@@ -52,6 +48,10 @@ figures/figure3-big-cluster.pdf : R/figure3-cluster.R $(DEPENDS)
 #! figures/fig4-pc1.pdf also makes suppfig forests
 figures/suppfig-forest-pc13.pdf figures/fig4-pc1.pdf : R/suppfig-forests.R
 	Rscript $< > $(<)out 2>&1
+
+## needs to be run after forests
+figures/fig6-pc3-mr.pdf : R/mr-analysis.R $(SPARSEDRIVERS) $(DEPENDS) figures/suppfig-forest-pc13.pdf 
+	qR.rb -j MR -r $< 
 
 figures/suppfig-ukbb-sig-by-imd.pdf : R/ukbb-by-imd.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1

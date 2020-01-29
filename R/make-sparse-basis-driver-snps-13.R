@@ -28,16 +28,33 @@ dt2mat <- function(dt,...) {
 }
 
 ## check centering and rotating recreates pc.emp$x
-zm <- scale(basis.mat.emp,center=TRUE,scale=FALSE)
-zm.centre <- attr(zm,"scaled:center")
-zz <- zm %*% pc.emp$rotation
+zm <- scale(basis.mat.emp,center=TRUE,scale=FALSE) # centered input
+zm.centre <- attr(zm,"scaled:center") # centre
+zz <- zm %*% pc.emp$rotation # projection
 cor(as.vector(zz),as.vector(pc.emp$x))
 sum(abs(as.vector(zz)-as.vector(pc.emp$x)))
 
 ################################################################################
 
+## plot reconstruction error
+p <- ncol(zm) # 265887
+n <- nrow(zm) # 14
+err <- sapply(1:14, function(k) {
+    reconstructed <- matrix(zm.centre,n,p) +
+      zz[,1:k,drop=FALSE] %*% t(pc.emp$rotation[,1:k,drop=FALSE])
+    residuals = zm - reconstructed
+    error = mean(residuals^2)
+})
+
+png("figures/suppfig-reconstruction-error.png",height=5,width=5,units="in",res=300)
+plot(1:14,err,ylim=c(0,max(err)),ylab="Mean square error",xlab="Number of components"); abline(h=min(err),lty=2)
+dev.off()
+
+
+################################################################################
+
 ## how sparse are the rotations?
-sX <- pc.emp$rotation 
+sX <- pc.emp$rotation[,1:13]
 m=reshape2::melt(sX)  %>% as.data.table()
 m <- m[Var2!="PC14"]
 head(m)
@@ -53,11 +70,11 @@ ggsave("~/share/as_basis/figures/suppfig-sparsebasis-coefficients.pdf",
        height=8,width=8)
 
 ## for diff quantiles of rotation vectors, what is correlation?
-qthr <- seq(0.0001,0.005,by=0.0001)
+qthr <- seq(0.0001,0.002,by=0.0001)
 cr0 <- cor(as.vector(zz),as.vector(pc.emp$x))
 cr <- mclapply(qthr, function(q) {
     quants <- apply(-abs(sX),2,quantile,q)
-    X <- pc.emp$rotation
+    X <- pc.emp$rotation[,-14] # 14 columns, but we only process first 13
     use <- matrix(TRUE,nrow(X),ncol(X),dimnames=dimnames(X))
     for(j in seq_along(quants)) {
         wh <- which(-abs(X[,j])>=quants[j])
@@ -65,21 +82,23 @@ cr <- mclapply(qthr, function(q) {
         use[wh,j] <- FALSE
     }
     message(q)
-    user <- apply(use[,-14],1,any)
+    user <- apply(use,1,any)
     beta0 = zm %*% X
-    diag(cor(beta0,pc.emp$x))
+    diag(cor(beta0,pc.emp$x[,-14]))
 })  %>% do.call("rbind",.)
 head(cbind(qthr,cr))
 tail(cbind(qthr,cr))
 
 ## what quantile gives minimum correlation?
 CTHR=0.999 # minimum correlation
-qlim <- qthr[apply(cr>CTHR,2,function(x) which(x)[1])][1:13]
+wh <- apply(cr>CTHR,2,function(x) which(x)[1])
+qlim <- qthr[wh][1:13]
 quants <- sapply(1:13, function(i) quantile(-abs(sX[,i]), qlim[i]))
 nquants <- sapply(1:13, function(i) sum(-abs(sX[,i]) <= quants[i]))
 message(CTHR)
 stats <- cbind(qlim,quants,nquants)
 print(stats)
+## cbind(stats,stats.old)
 
 ## 0.001 is good
 X <- pc.emp$rotation[,1:13]
@@ -92,7 +111,7 @@ for(j in seq_along(quants)) {
 beta0 = zm %*% X
 diag(cor(beta0,pc.emp$x))
 
-user <- apply(use[,-14],1,any)
+user <- apply(use,1,any)
 table(user)
 X <- pc.emp$rotation[user,-14]
 Z <- zm[,which(user)]

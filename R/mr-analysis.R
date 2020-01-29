@@ -5,6 +5,7 @@ library(gtx)
 
 ## summary basis
 source("R/cw-reader.R") # also loads utils and files
+source("R/cw-palette.R")
 proj=reader()
 
 ## load source data
@@ -238,10 +239,10 @@ MRdt[,limit:=factor(limit, levels=c("t3","t4","p3","p4","pc"))]
 MRdt[category.label=="Myasthenia gravis", category.label:="Myasthenia\ngravis"]
 
 
-c4="#ff775f" # exposure
-c2="#cc220f" # exposure
+c4=mygreen #"#ff775f" # exposure
+c2=mygreen #"#cc220f" # exposure
 c1 <- "#63acbe" # outcome
-c3 <- "OliveDrab" #"grey10"
+c3 <- myblue #"OliveDrab" #"grey10"
 what="est"; x=MRdt[exposure=="ASTLE:eo"];limits.do=c("p3","p4","pc")
 
 library(ggplot2)
@@ -285,7 +286,7 @@ plotter <- function(x,what=c("est","int","grs"),
                        values=c(p3=5,p4=4,t3=4,t5=4,pc=15),
                        labels=function(s) c(p3="Exposure p<10-3",p4="Exposure p<10-4",pc="PC driver SNPs")[s]) +
     scale_colour_manual("SNP selection",
-                        values=c(p3="DodgerBlue",p4=c2,t3=c2,t5=c2,pc=c3),
+                        values=c(p3=mygreen,p4=c2,t3=c2,t5=c2,pc=c3),
                         labels=function(s) c(p3="Exposure p<10-3",p4="Exposure p<10-4",pc="PC driver SNPs")[s]) +
     scale_x_discrete(labels=function(a) ifelse(grepl(limits.do[2],a),
                                                sub(paste0(" ",paste(limits.do,collapse="|"),".*"),"",a) ,
@@ -312,6 +313,7 @@ plotter <- function(x,what=c("est","int","grs"),
 
 plotter(x=MRdt[exposure=="ASTLE:eo"],limits.do=c("p3","p4","pc"))
 ggsave("figures/suppfig-mr-astle.pdf",height=8,width=6,scale=1.5)
+ggsave("figures/slides-mr-astle.pdf",height=6,width=8,scale=1.5)
 ## plotter(x=MRdt[exposure=="CK:IP10"],limits.do=c("p3","p4","pc"))
 ## plotter(x=MRdt[exposure=="CK:MIG"],limits.do=c("p3","p4","pc"))
 plotter(x=MRdt[exposure %in% c("CK:IP10","CK:MIG")],limits.do=c("p3","p4","pc"))
@@ -333,13 +335,15 @@ tmp <- rbind(MRdt[exposure %in% c("CK:IP10","CK:MIG"),
              fill=TRUE)
 tmp$exposure %<>% as.factor()  %>% relevel(.,"PC3")
 tmp[,category.label:=factor(category.label,
-                            levels=c("Ank.Spond", "JIA", "Myasthenia\ngravis",
-                                     "PsA", "UKBB","Cytokines"))]
+                            levels=c("Cytokines","JIA","Myasthenia\ngravis",
+                                     "Ank.Spond","PsA", "UKBB"))]
 plotter(x=tmp, limits.do=c("p3","pc")) +
   scale_y_continuous(breaks=0) +
   theme(legend.position="bottom",legend.justification="right",
         axis.title.x=element_blank())
 ggsave("figures/fig6-pc3-mr.pdf",height=6,width=8)
+ggsave("figures/slides-pc3-mr.pdf",height=6,width=12,scale=1,pointsize=16)
+
 
 (load("~/basis-pc13-forest.RData"))
 
@@ -354,13 +358,15 @@ tmp <- rbind(MRdt[exposure %in% c("ASTLE:eo"),
              fill=TRUE)
 tmp$exposure %<>% as.factor()  %>% relevel(.,"PC13")
 tmp[,category.label:=factor(category.label,
-                            levels=c("Ank.Spond",  "EGPA","JIA", "Myositis",
-                                      "UKBB","Blood counts"))]
+                            levels=c("Blood counts", "EGPA","Myositis",
+                                     "JIA",  "Ank.Spond",
+                                     "UKBB"))]
 plotter(x=tmp, limits.do=c("p3","pc")) +
   scale_y_continuous(breaks=0) +
   theme(legend.position="bottom",legend.justification="right",
         axis.title.x=element_blank())
 ggsave("figures/fig5-pc13-mr.pdf",height=6,width=8,scale=1)
+ggsave("figures/slides-pc13-mr.pdf",height=6,width=12,scale=1,pointsize=16)
 
 
 ################################################################################

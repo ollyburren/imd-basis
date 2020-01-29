@@ -3,6 +3,12 @@ library(magrittr)
 
 ## load results
 source("R/cw-reader.R")
+
+## supp tab 10
+x <- reader()
+fwrite(x[,.(category.label,trait.label,PC,delta,var.delta=var.proj,fdr.delta=newfdr,p.overall,fdr.overall)],
+file="figures/supptable-10-projections.csv.gz")
+
 ## source("R/cw-renamer.R")
 ## res <- reader(J=2)
 ## res$proj[,p.adj:=p.adjust(p.value,method="BH"),by=c("fdrcat","variable")]
@@ -11,7 +17,7 @@ source("R/cw-reader.R")
 ##                                                "bowes_jia_2019")) &
 ##                  !(trait %in% c("myositis_myogen","jia_case_19"))]
 ## subset to small datasets (<2000 cases)
-proj <- reader()[category %in% c("Ank.Spond", "birdshot_retinopathy", "EGPA", "JIA", "methotrexate", "Myasthenia gravis", "Myositis", "NMO", "PsA", "Uveitis", "Vasculitis") &
+proj <- reader()[category %in% c("Ank.Spond", "birdshot_retinopathy", "EGPA", "JIA", "methotrexate", "Myasthenia gravis", "NMO", "PsA", "Uveitis", "Vasculitis") &
                  !(trait %in% c("bowes_psa","ank_spond","jia_case_19")) &
                  fdr.overall < 0.01 &
                  newfdr < 0.01]
@@ -24,7 +30,7 @@ with(proj,cat(unique(paste(category.label, trait.label, sep=" ")),sep="\n"))
 ## number of tests in parent family
 ## N.parents=nrow(proj13)
 ## proj11 <- proj11[p.adj<0.01]
-traits.considered=reader()[category %in% c("Ank.Spond", "birdshot_retinopathy", "EGPA", "JIA", "methotrexate", "Myasthenia gravis", "Myositis", "NMO", "PsA", "Uveitis", "Vasculitis") &
+traits.considered=reader()[category %in% c("Ank.Spond", "birdshot_retinopathy", "EGPA", "JIA", "methotrexate", "Myasthenia gravis", "NMO", "PsA", "Uveitis", "Vasculitis") &
                              !(trait %in% c("bowes_psa","ank_spond","jia_case_19"))]
 N.traits.considered <- length(unique(traits.considered$trait))
 N.traits.signif <- length(unique(proj$trait))
@@ -33,7 +39,8 @@ unique(traits.considered[,.(category.label, trait.label, fdr.overall)])
 
 sort(table(proj$trait))
 
-dim(proj) ## 29 trait/pc pairs
+dim(proj) ## 22 trait/pc pairs
+length(unique(proj$trait)) # 12 unique traits
 
 ## load input data
 (load(SPARSE_BASIS_FILE))
@@ -51,6 +58,7 @@ library(ggplot2)
 library(cowplot) ; theme_set(theme_cowplot())
 
 pids.use <- rownames(use.pca)
+length(pids.use) # 566 snps in sparse basis
 
 m <- match(data$pid,rownames(use.pca))
 for(j in colnames(use.pca)) {
@@ -70,12 +78,46 @@ FDR <- lapply(1:nrow(proj), function(r) {
 
 ## annotate
 length(unique(FDR$pid))
-fdr.ann <- annot(unique(FDR$pid),snp=TRUE)
+fdr.ann <- annot(unique(FDR$pid),snp=FALSE)
 fdr.ann <- as.data.table(fdr.ann)
+
 ## reduce genes
 fdr.red <- fdr.ann[,.(gene=paste(external_gene_name,collapse="/"),
                       egene=paste(ensembl_gene_id,collapse="/")),
-                   by=c("pid","RefSNP_id")]
+                   by=c("pid")]
+
+## add rsid
+dbsnp <- fread(cmd="zcat /home/cew54/share/Data/reference/dbsnp-common_all.vcf.gz | grep -v '##' | cut -f1-5")
+head(dbsnp)
+pids  <- tstrsplit(fdr.red$pid,":")  %>% as.data.table()
+setnames(pids,c("chr","pos"))
+pids[,pos:=as.integer(pos)]
+setnames(dbsnp,c("#CHROM","POS"),c("chr","pos"))
+dim(pids)
+pids <- merge(pids,dbsnp,all.x=TRUE,by=c("chr","pos"))
+which(duplicated(pids$ID))
+head(pids)
+
+
+## library(biomaRt)
+## ## variation = useEnsembl(biomart="snp")
+## ## listDatasets(variation)
+## variation = useEnsembl(biomart="snp", dataset="hsapiens_snp")
+## listFilters(variation)
+## listAttributes(variation)
+
+## rs1333049 <- getBM(attributes=c('refsnp_id','refsnp_source','chr_name','chrom_start','chrom_end','minor_allele','minor_allele_freq','minor_allele_count','consequence_allele_string','ensembl_gene_stable_id','ensembl_transcript_stable_id'),
+## filters = 'snp_filter', values ="rs1333049",
+## mart = variation)
+## rs1333049
+
+## ss <- tstrsplit(fdr.red$pid[1:3],":")
+## rsid <- getBM(attributes=c('refsnp_id','refsnp_source','chr_name','chrom_start','consequence_allele_string'),
+## filters = c("chr_name","start"),
+## values =ss,
+## mart = variation)
+
+
 
 FDR <- merge(FDR,fdr.red,by="pid")
 FDR <- merge(FDR,
@@ -86,14 +128,37 @@ uFDR[,fdr.drivers:=p.adjust(p.value,method="BH"),by="trait"]
 FDR <- merge(FDR,uFDR[,.(trait,pid,fdr.drivers)],by=c("trait","pid"))
 FDR[,lab:=paste(category.label,trait.label,pc,sep=" / ")]
 
-pqq <- ggplot(FDR,aes(sample=-log(p.value),group=lab)) +
-  ## geom_density() +
-  ## facet_wrap(~lab) 
-  stat_qq(distribution = stats::qexp) +
-  stat_qq_line(distribution = stats::qexp) +
+my_stat_qq = function(data, ...) {
+}
+
+FDR[,sigcol:=fdr.drivers<0.01]
+my_stat_qq(FDR, "sigcol")
+
+data <- copy(FDR)
+data <- data[order(data$p.value,decreasing=TRUE),][,sample:=-log(p.value)]
+data[,theoretical:=stats::qexp((1:.N)/(.N+1)),by=lab]
+
+## ggplot(data) + 
+##   geom_point(aes_string(x="theoretical", y="sample", colour="sigcol")) +
+##   facet_wrap(~lab) +
+##   geom_abline()
+
+## pqq <- ggplot(FDR,aes(sample=-log(p.value),group=lab)) +
+##   stat_qq(aes(col=fdr.drivers<0.01), distribution = stats::qexp) +
+##   stat_qq_line(distribution = stats::qexp) +
+##   facet_wrap(.~lab,scales="free_y") +
+##   labs(x="Expected",y="Observed")
+## pqq
+
+pqq <- ggplot(data,aes(x=theoretical,y=sample,group=lab)) +
+  geom_point(aes(col=sigcol)) +
+  geom_abline() +
   facet_wrap(.~lab,scales="free_y") +
-  labs(x="Expected",y="Observed")
+  scale_colour_manual("FDR<0.01",values=c("FALSE"="grey","TRUE"="black")) +
+  labs(x="Expected",y="Observed") +
+  theme(legend.position="bottom")
 pqq
+
 ggsave("figures/suppfig-sparsesig-qqplots.pdf",height=8,width=8,scale=1.5)
 ## pdf("figures/suppfig-sparsesig-qqplots.pdf",height=12,width=12)
 ## print(pqq)
@@ -118,17 +183,20 @@ pfdr <- ggplot(FDR,aes(x=-log10(p.value),y=-log10(fdr.gw))) + geom_point()  +
 pfdr
 ## FDR 0.01 approx GW sig across all SNPs
 
-unique(FDR[p.value<5e-8,.(category.label,trait.label,pid,RefSNP_id)])
+unique(FDR[p.value<5e-8,.(category.label,trait.label,pid)]) #,RefSNP_id)])
 
 sig <- FDR[fdr.drivers<0.01,.(p.value=p.value[which.min(fdr.drivers)],
                               fdr=min(fdr.drivers),
                               fdr.gw,
                        components=paste(sort(unique(pc)),collapse=":")),
-           by=c("pid","category.label","trait.label","trait","RefSNP_id")]  %>%
+           by=c("pid","category.label","trait.label","trait"#,"RefSNP_id"
+)]  %>%
     unique(.,by=c("pid","trait"))
 ## compare to calling per-PC
-unique(FDR[fdr.drivers>0.01 & fdr.pc<0.01 & p.value > 5e-8,.(category.label,trait.label,pid,RefSNP_id,p.value)])
+unique(FDR[fdr.drivers>0.01 & fdr.pc<0.01 & p.value > 5e-8,.(category.label,trait.label,pid,#RefSNP_id,
+p.value)])
 sig[,c("chr","pos"):=lapply(tstrsplit(pid,":"),"as.numeric")]
+
 
 ## when 2+ snps are significant near each other, drop less significant ones
 ssig <- split(sig,sig$trait)
@@ -164,7 +232,7 @@ sig[,basis.diseases2:=NULL]
 ## get snp comments from
 comments=fread("~/basis-drivers-comments.csv")
 comments  %<>% rename.traits()
-comments[,RefSNP_id:=NULL]
+## comments[,RefSNP_id:=NULL]
 setnames(comments,make.names(names(comments)))
 comments[,basis.traits.with.GWsig.assoc:=NULL]
 table(comments$trait.label)
@@ -172,7 +240,7 @@ table(sig$trait.label)
 comments[,trait.label:=sub("EGPA","",trait.label)]
 
 g <- unique(comments[,.(pid,gene)])
-nog <- comments[,.(trait.label,pid,comments,gwsig,other.evidence,novel)]
+nog <- comments[,.(trait.label,pid,RefSNP_id,comments,gwsig,other.evidence,novel)]
 sig <- merge(sig,nog,by=c("pid","trait.label"),all.x=TRUE)
 sig <- merge(sig,g,by=c("pid"),all.x=TRUE)
 ## url <- "https://docs.google.com/spreadsheets/d/1W6tgXaYkyyKnjo3vVTGc7Gfex2w373T86h_Wa6qSAc0/edit?usp=sharing"
@@ -182,6 +250,7 @@ sig <- merge(sig,g,by=c("pid"),all.x=TRUE)
 ##     path = "comments.csv",
 ##     overwrite = TRUE
 ## )
+sig[is.na(RefSNP_id)]
 
 dim(sig)
 ## update standard blank fields
@@ -200,11 +269,16 @@ sig <- sig[order(gwsig,other.evidence,trait)]
 sig[is.na(genelist),.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)]  %>% tail
 sig[,.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)]  
 
+sig[order(p.value),.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)]  
+
 
 
 fwrite(sig[,.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)],
        file="figures/table-drivers-significant.csv") 
 
+sig[,chr:=sub(":.*","",pid)]
+sig[order(chr,pid),.(pid,category.label,trait.label,RefSNP_id)]
+sig[category.label=="JIA"][order(chr,pid),.(pid,category.label,trait.label,RefSNP_id,p.value,fdr)]
 
 ## stats
 cat(c("number of traits considered: ",N.traits.considered,"\n",

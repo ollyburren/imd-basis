@@ -52,6 +52,7 @@ fcons <- function(dt,res,label) {
 library(cowplot); theme_set(theme_cowplot())
 plotsumm <- function(...,var="p.wcors") {
     tmp <- rbind(...,fill=TRUE)
+    tmp[,fdr.wcors:=p.adjust(p.wcors,method="BH"),by=c("cat","PC")]
     tmp[,cutfdr:=cut(newfdr,c(0,0.01,0.1,0.5,1))]
     levels(tmp$cutfdr)
     levels(tmp$cutfdr) <- c("<0.01","<0.1","<0.5","<1")
@@ -64,7 +65,7 @@ plotsumm <- function(...,var="p.wcors") {
         facet_grid(.~cat) +
         background_grid("y","none") +
         xlab("FDR category") +
-        ylab("Spearman -log10 p") +
+        ylab("Consistency (Spearman FDR)") +
         scale_fill_discrete("Trait group") +
         theme(legend.position="none")
 }
@@ -126,14 +127,14 @@ SUMM2 <- fcons(DT2,res2,"GWAS")
 
 ## bloods
 res3 <- proj[category=="ASTLE"]
-wanted <- res3$trait  %>% unique()
-wanted
+wanted <- res3$trait  %>% unique()  %>% intersect(., .traits.astle) # 13 key traits from Astle paper
+wanted 
 
 DT3=read_raw(wanted,pids=rownames(use.pca))
 SUMM3 <- fcons(DT3,res3,"Blood counts")
 
 plotsumm(SUMM1,SUMM2,SUMM3)
-SUMM3[p.wcors<1e-5]
+SUMM3[p.wcors<1e-3]
 
 ################################################################################
 
@@ -172,6 +173,8 @@ SUMM5 <- fcons(DT5,res5,"Flow")
 ## plot
 plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="p.wcors") +
   geom_hline(yintercept=1,linetype="dashed",size=1)
+plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="fdr.wcors") ## +
+  ## geom_hline(yintercept=1,linetype="dashed",size=1)
              
 ggsave("~/share/as_basis/figures/suppfig-consistency.pdf",height=6,width=8,scale=1.2)
 

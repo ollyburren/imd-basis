@@ -1,4 +1,5 @@
 library(cowplot)
+source("R/cw-palette.R")
 order.traits <- function(dat) {
     ## ukbb always left to right
     sdat <- split(dat,dat$newcat)
@@ -47,17 +48,20 @@ forest_labelled <- function(proj.dat,basis.dat=basis.DT,pc,focal=NULL,title="",f
                               linetype=newfdr>fdr_thresh)) +
       geom_linerange(aes(ymin=lower,ymax=upper)) +
       geom_point(aes(pch=grepl("_combined",trait.label)),
-                 data=dat[!(category.label %in% c("basis","Basis"))],
-                 bg="black") +
+                 size=4,col="grey80",
+                 data=dat[!(category.label %in% c("basis","Basis"))]) + #,
+                                        #bg="black") +
       geom_point(data=dat[category.label %in% c("basis","Basis")],
-                 bg="red",col="red",pch=22) +
+                 col="red",pch=15) +
       geom_hline(yintercept=0,col='red',linetype=3) +
       ggtitle(paste("Component",sub("PC","",pc))) +
       facet_grid(newcat ~ .,scales="free_y",space="free_y",switch="y") +
       scale_y_continuous("Difference from control",breaks=0) +
       ## scale_x_discrete(breaks=seq_along(otraits), labels=olabels) +
-      scale_shape_manual(values=c("TRUE"=23,"FALSE"=22),guide=FALSE) +
+      #scale_shape_manual(values=c("TRUE"=23,"FALSE"=22),guide=FALSE) +
+      scale_shape_manual(values=c("TRUE"=18,"FALSE"=15),guide=FALSE) +
       scale_linetype(guide=FALSE) +
+      ## scale_colour_gradient2(low=darken(myblue),high=darken(myred),mid="grey95",guide="none") +
       coord_flip() +
       background_grid(major="y") +
       theme(plot.title=element_text(hjust = 0),

@@ -94,7 +94,7 @@ FPATH="figures" # path to figures dir
 ## check labels - have we UKBB and not the right way round?
 
 for(nm in names(L)) {
-    png(paste0(nm,".png"),height=3.5,width=5,units="in",res=300,pointsize=10)
+    png(paste0(nm,".png"),height=4.5,width=5,units="in",res=300,pointsize=12)
     ## if(horizontal) {
     par(mar=c(2,0,0,18))
     ## } else {
@@ -105,7 +105,7 @@ for(nm in names(L)) {
              pal=grnvi,
              k=1,show.legend=FALSE)#nm=="weight")
     lab <- letters[which(names(L)==nm)]
-    legend("topleft",legend=lab,bty="n")
+    legend("topleft",legend=lab,bty="n",inset=c(-0.1,0))
     dev.off()
 }
 

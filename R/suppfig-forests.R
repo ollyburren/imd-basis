@@ -2,6 +2,7 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 source("R/cw-reader.R")
+source("R/cw-palette.R")
 
 ## proj <- res$proj[!(category %in% c("astle_blood","geneatlas_icd","geneatlas_srd","roederer_immunophenotypes","ahola-olli_cytokine"))]
 proj <- reader() 
@@ -39,7 +40,7 @@ nm <- c(asthma="asthma",
         CEL="malabsorption coeliac disease",
         MS="multiple sclerosis",
         RA="rheumatoid arthritis",
-        PBC="primary billiary cholangitis",
+        PBC="primary biliary cholangitis",
         T1D="type 1 diabetes",
         VIT="vitiligo",
         SLE="SLE",
@@ -93,6 +94,7 @@ for(i in 1:13) {
                      basis.DT,pc=iPC,
                      focal=traits,
                      order.within=TRUE)
+    p
     ggsave(paste0("figures/suppfig-forest-pc",i,".pdf"),plot=p,height=10,width=8,scale=1.5)
 }
 ## dev.off()
@@ -124,11 +126,10 @@ IgA nephropathy,No,No,no true autoantibodies to my knowledge (Ken will know bett
 malignant melanoma,No,No,
 MS,No,No,
 Myasthenia gravis,Yes,-,
-Myositis,Yes,-,
 neuro myolitis optica,Yes in seropositive pts,Yes in seropositive pts,
 IgGPos_ssimp,Yes,Yes,
 IgGNeg_ssimp,No,No,
-primary billiary cholangitis,No,Yes,
+primary biliary cholangitis,No,Yes,
 pernicious anaemia,Yes,Yes, - but only if caused by autoimmune gastritis
 PSC,No,No,
 psoriatic arthritis,No,No,
@@ -157,7 +158,7 @@ tmp[trait %in% c("multiple sclerosis","ank_spond","li_as") |
     c("Pathogenic.auto.antibodies","Any.autoantibodies"):=list("No","No")]
 tmp[trait.label==" _combined" & category.label=="JIA",
     c("Pathogenic.auto.antibodies","Any.autoantibodies"):=list(NA,NA)]
-tmp[trait.label %in% c("primary billiary cholangitis","malabsorption coeliac disease","primary sclerosing cholangitis") |
+tmp[trait.label %in% c("primary biliary cholangitis","malabsorption coeliac disease","primary sclerosing cholangitis") |
     category.label=="",
     c("Pathogenic.auto.antibodies","Any.autoantibodies"):=list("No","Yes")]
 tmp[trait.label %in% c("RF+","systemic lupus erythematosis sle","SLE") |
@@ -168,7 +169,7 @@ tmp[,aab:=ifelse(Pathogenic.auto.antibodies=="Yes","P",
 tmp[category.label=="Myasthenia gravis", category.label:="Myasthenia\ngravis"]
 
 tmp <- rbind(tmp,
-             data.table(trait.label=c("primary billiary cholangitis","primary sclerosing cholangitis","IgA nephropathy","LADA"),
+             data.table(trait.label=c("primary biliary cholangitis","primary sclerosing cholangitis","IgA nephropathy","LADA"),
                         category.label=c("UKBB"),
                         aab=c("NP","No","No","P")),
              fill=TRUE)
@@ -185,24 +186,37 @@ proj.dat=tmp[trait %in% c(traits) & trait!="ASTLE:eo",]
 pc1$data$aab %<>% factor(., levels=c("No","NP","P"))
 levels(pc1$data$aab) <- c("None","Non-pathogenic","Pathogenic")
 
-theme_set(theme_cowplot(10))
-p.pc1 <- pc1 + 
-  geom_point(aes(y=0.15,x=trait.label,fill=aab,shape=aab),
+p.pc1 <- pc1 + theme_cowplot(12)
+
+## r.pc1 <- ggplot(pc1$data) +
+  
+ pc1 + geom_point(aes(y=0.15,x=trait.label,fill=aab,shape=aab),
              size=4,
              data=subset(pc1$data,!is.na(pc1$data$aab))) +
   theme(legend.position = "top",
         legend.justification = "right",
         legend.text=element_text(size=rel(0.8)),
         legend.title=element_text(size=rel(1)),
+        ## axis.text=element_text(size=rel(1.3)),
+        ## strip.text=element_text(size=rel(1.3)),
+        ## axis.line=element_blank(),
+        ## axis.ticks=element_blank(),
+        ## axis.title=element_blank(),
         plot.title=element_blank())  +
   scale_shape_manual("AAB",breaks=levels(pc1$data$aab),
-                     values=c(None=21,"Non-pathogenic"=22,"Pathogenic"=23,"TRUE"=23,"FALSE"=22)) +
+                     values=c(None=21,"Non-pathogenic"=22,"Pathogenic"=23,"TRUE"=18,"FALSE"=15)) +
   scale_fill_manual("AAB",breaks=levels(pc1$data$aab),
-                    values=c(None="white","Non-pathogenic"="lightblue","Pathogenic"="royalblue","TRUE"="white","FALSE"="white")) +
+                    values=c(None="white","Non-pathogenic"=lighten(mygreen,1.6),#"lightblue",
+                             "Pathogenic"=mygreen,#"royalblue",
+                             "TRUE"="white","FALSE"="white")) +
   guides(linetype="none",shape="legend",fill="legend") 
-p.pc1
 
-ggsave("figures/fig4-pc1.pdf",height=5,width=4,scale=1.8)
+
+## plot_grid(pc1,r.pc1,rel_widths=c(0.8,0.2),nrow=1)
+
+ggsave("figures/fig4-pc1.pdf",height=4.5,width=4,scale=1.8)
+if(interactive())
+system("evince figures/fig4-pc1.pdf &")
 
 save(p.pc1, file="~/basis-pc1-forest.RData")
 
@@ -219,7 +233,6 @@ p.pc3 <-  forest_labelled(proj.dat, #proj[trait %in% c(traits),],#,traits.i),],
                      basis.DT,pc="PC3",
                      focal=traits)
 p.pc3
-
 save(p.pc3, file="~/basis-pc3-forest.RData")
 ggsave("figures/fig4-pc3.pdf",height=10,width=8)
 
