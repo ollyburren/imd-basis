@@ -1,5 +1,6 @@
 library(cowplot)
 source("R/cw-palette.R")
+cols <- hrbrthemes::ipsum_pal()(7); c3 <- cols[3]
 order.traits <- function(dat) {
     ## ukbb always left to right
     sdat <- split(dat,dat$newcat)
@@ -46,7 +47,7 @@ forest_labelled <- function(proj.dat,basis.dat=basis.DT,pc,focal=NULL,title="",f
     
     forests <- ggplot(dat,aes(x=full.label,y=delta,#colour=category.label,
                               linetype=newfdr>fdr_thresh)) +
-      geom_linerange(aes(ymin=lower,ymax=upper)) +
+      geom_linerange(aes(ymin=lower,ymax=upper),col=c3) +
       geom_point(aes(pch=grepl("_combined",trait.label)),
                  size=4,col="grey80",
                  data=dat[!(category.label %in% c("basis","Basis"))]) + #,
@@ -66,7 +67,10 @@ forest_labelled <- function(proj.dat,basis.dat=basis.DT,pc,focal=NULL,title="",f
       background_grid(major="y") +
       theme(plot.title=element_text(hjust = 0),
             strip.placement = "outside",
-            strip.background=element_rect(fill="grey90"),
+            ## strip.background=element_rect(fill="grey90"),
+strip.background=element_blank(),
+strip.text = element_text(hjust = 1,vjust=1,face="bold"),
+panel.spacing = grid::unit(2, "lines"),
             ## axis.ticks.x=element_blank(),
             ## axis.text.x=element_blank(),
             ## legend.position="none",

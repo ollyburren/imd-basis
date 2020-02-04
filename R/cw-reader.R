@@ -25,8 +25,6 @@ reader <- function(what=c("sparse","fullfat")) {
     ## mangle labels for consistency
     proj[grep("^roederer_",trait),c("category","category.label","trait.label"):=
                                     list("Roederer","Flow cytom",sub("roederer:","",trait))]
-    proj[grep("^TIAN:",trait),c("category","category.label","trait.label"):=
-                                 list("TIAN","Infections",sub("TIAN:","",trait))]
     proj[grep("^ASTLE:",trait),c("category","category.label","trait.label"):=
                                  list("ASTLE","Blood counts",sub("ASTLE:","",trait))]
     proj[,trait.label:=gsub(" ssimp|NMO|EGPA|AAV","",trait.label)]
@@ -58,9 +56,9 @@ read_raw <- function(trait,pids=NULL) {
         return(rbindlist(lapply(trait, read_raw, pids=pids), use.names=TRUE))
     cat(trait,"\t")
     f <- trait
-    if(grepl("jia",trait)) {
-    files <- list.files("~/share/Data/GWAS/jia-mar-2019")
-    }
+    ## if(grepl("jia",trait)) {
+    ## files <- list.files("~/share/Data/GWAS/jia-mar-2019")
+    ## }
     if(!grepl("_source.RDS",f))
         f  %<>%  paste0(.,"_source.RDS")
     f %<>% file.path(DATA_DIR,.)

@@ -77,11 +77,11 @@ k <- 4
 col4 <- tol5qualitative[c(1,2,3,5)]
 ## col4 <- c("#015501","#010155","#015501","#010155")
 ## col4 <- rep(c("dodgerblue","grey30"),length.out=k)
-col4 <- rep(c(mygreen,"grey30"),length.out=k)
+col4 <- rep(c(mygreen,"grey10"),length.out=k)
 pch4 <- rep(c(19,18),length.out=k)
 cuts <- cutree(dd,k=k)[labels(dd)]
 ## colbb <- ifelse(grepl("UKBB",labels(dd)),"grey20", "steelblue") #tol5qualitative[1])
-colbb <- ifelse(grepl("UKBB",labels(dd)),"grey30", mygreen) #darken(mygreen,1.2)) #tol5qualitative[1])
+colbb <- ifelse(grepl("UKBB",labels(dd)),"grey10", mygreen) #darken(mygreen,1.2)) #tol5qualitative[1])
 pchbb <- ifelse(grepl("UKBB",labels(dd)), 18,19)
 
 pdf("~/share/as_basis/figures/figure3-big-cluster.pdf",height=10,width=8,pointsize=10)
@@ -89,7 +89,7 @@ par( mar = c(1,0,0,29))
 ## par(mar = c(28,2,1,2))
 dd  %>% 
     dendextend::set("leaves_pch",pchbb)  %>%
-    dendextend::set("labels_cex",1.2)  %>%
+    dendextend::set("labels_cex",1)  %>%
     dendextend::set("leaves_col",colbb)  %>% 
   dendextend::set("labels_col",colbb)  %>%
   plot(.,axes=FALSE,horiz=TRUE)

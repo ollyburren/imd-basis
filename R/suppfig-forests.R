@@ -99,6 +99,7 @@ for(i in 1:13) {
 }
 ## dev.off()
 
+
 if(interactive())
     system("evince ~/share/as_basis/figures/suppfig-forest-pc1.pdf &")
 
@@ -205,16 +206,19 @@ p.pc1 <- pc1 + theme_cowplot(12)
         plot.title=element_blank())  +
   scale_shape_manual("AAB",breaks=levels(pc1$data$aab),
                      values=c(None=21,"Non-pathogenic"=22,"Pathogenic"=23,"TRUE"=18,"FALSE"=15)) +
-  scale_fill_manual("AAB",breaks=levels(pc1$data$aab),
+   ## scale_fill_ipsum("AAB") +
+   scale_fill_manual("AAB",breaks=levels(pc1$data$aab),
                     values=c(None="white","Non-pathogenic"=lighten(mygreen,1.6),#"lightblue",
                              "Pathogenic"=mygreen,#"royalblue",
                              "TRUE"="white","FALSE"="white")) +
   guides(linetype="none",shape="legend",fill="legend") 
 
+## [1] "#d18975" "#8fd175" "#3f2d54" "#75b8d1" "#2d543d" "#c9d175" "#d1ab75"
+## [8] "#d175b8" "#758bd1"
 
 ## plot_grid(pc1,r.pc1,rel_widths=c(0.8,0.2),nrow=1)
 
-ggsave("figures/fig4-pc1.pdf",height=4.5,width=4,scale=1.8)
+ggsave("figures/fig4-pc1.pdf",height=4.5,width=4,scale=2.5)
 if(interactive())
 system("evince figures/fig4-pc1.pdf &")
 
@@ -266,16 +270,15 @@ p.pc13
 save(p.pc13, file="~/basis-pc13-forest.RData")
 ggsave("figures/fig4-pc13.pdf",height=10,width=8)
 
+## pdf("figures/fig4-pc1-pc13.pdf",height=8*1.4,width=10*1.4)
+## cowplot::plot_grid(p.pc1,NULL,p.pc13,nrow=1,
+##                    labels=c("a","","b"),
+##                    rel_widths=c(1,0.05,1))
+## dev.off()
+## ## ggsave("figures/fig4-pc1-pc13.pdf",height=8,width=10,scale=1.4)
 
-pdf("figures/fig4-pc1-pc13.pdf",height=8*1.4,width=10*1.4)
-cowplot::plot_grid(p.pc1,NULL,p.pc13,nrow=1,
-                   labels=c("a","","b"),
-                   rel_widths=c(1,0.05,1))
-dev.off()
-## ggsave("figures/fig4-pc1-pc13.pdf",height=8,width=10,scale=1.4)
-
-cowplot::plot_grid(p.pc1,p.pc3,p.pc13,nrow=1)
-ggsave("figures/fig4-pc1-pc3-pc13.pdf",height=8,width=12)
+## cowplot::plot_grid(p.pc1,p.pc3,p.pc13,nrow=1)
+## ggsave("figures/fig4-pc1-pc3-pc13.pdf",height=8,width=12)
 
 if(!interactive())
     q("no")
