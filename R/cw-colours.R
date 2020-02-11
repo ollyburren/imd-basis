@@ -1,20 +1,8 @@
 #' set colours by category, define tol*qualitative vectors
 
 library(RColorBrewer)
-tol5qualitative= c("#332288","#88CCEE","#117733","#DDCC77","#CC6677")
-tol6qualitative=c("#332288", "#88CCEE", "#117733", "#DDCC77", "#CC6677","#AA4499")
-tol7qualitative=c("#332288", "#88CCEE", "#44AA99", "#117733", "#DDCC77", "#CC6677","#AA4499")
-tol9qualitative=c("#332288", "#88CCEE", "#44AA99", "#117733", "#999933", "#DDCC77", "#CC6677", "#882255", "#AA4499")
-tol10qualitative=c("#332288", "#88CCEE", "#44AA99", "#117733", "#999933", "#DDCC77", "#661100", "#CC6677", "#882255", "#AA4499")
-
-redblue<-colorRampPalette(c("red","white","blue"))
-    magblue<-colorRampPalette(c("magenta","white","blue"))
-    grnvi<-colorRampPalette(c("#00441b","gray90","#40004b"))
-grnmag<-colorRampPalette(c("#00441b","white","magenta"))
-
-brn <- "#543005"; grn <- "#003c30"
-brngrn <- colorRampPalette(c("#543005","white","#003c30"))
-# name=trait, entry=category
+source("R/cw-palette.R")
+                                        # name=trait, entry=category
 ## trait2study=with(data$proj, structure(category,names=trait))
 ## ## label common disease as one group
 ## trait2study[ trait2study %in% c("bb_cancer","bb_disease","ferreira_asthma","psyc_consortium",NA,"bowes_psa","tian_infectious_disease","brown_as" ) ] <- "common"

@@ -71,7 +71,7 @@ ZP <- f.project(ZW,"z")
 BP <- f.project(BW,"beta")
 
 L <- list(noweight=NP,rivas.z=ZP,rivas.beta=BP,weight=P)
-
+Lab <- list(noweight="a",rivas.z="a",rivas.beta="b",weight="b")
 paired <- BB_LU13
 
 BB_LU13 <- c(paired,
@@ -94,7 +94,7 @@ FPATH="figures" # path to figures dir
 ## check labels - have we UKBB and not the right way round?
 
 for(nm in names(L)) {
-    png(paste0(nm,".png"),height=3.5,width=5,units="in",res=300,pointsize=10)
+    png(paste0(nm,".png"),height=4.5,width=5,units="in",res=300,pointsize=12)
     ## if(horizontal) {
     par(mar=c(2,0,0,18))
     ## } else {
@@ -104,13 +104,20 @@ for(nm in names(L)) {
     dplotter(b,NULL,NULL,what="b",hclust.method="ward.D2",
              pal=grnvi,
              k=1,show.legend=FALSE)#nm=="weight")
-    lab <- letters[which(names(L)==nm)]
-    legend("topleft",legend=lab,bty="n")
+    ## lab <- letters[which(names(L)==nm)]
+    lab <- Lab[[nm]]
+    legend("topleft",legend=lab,bty="n",inset=c(-0.1,0))
     dev.off()
 }
 
-system(paste("montage -mode concatenate noweight.png rivas.z.png rivas.beta.png weight.png -tile 2x2",
+system(paste("montage -mode concatenate noweight.png weight.png -tile 2x1",
              file.path(FPATH,"figure2-hclust-rivas.png")))
+
+system(paste("montage -mode concatenate rivas.z.png rivas.beta.png -tile 2x1",
+             file.path(FPATH,"figure2-hclust-rivas-supplementary.png")))
+
+## system(paste("montage -mode concatenate noweight.png rivas.z.png rivas.beta.png weight.png -tile 2x2",
+##              file.path(FPATH,"figure2-hclust-rivas.png")))
 
 if(interactive())
     system(paste("display", file.path(FPATH,"figure2-hclust-rivas.png")))

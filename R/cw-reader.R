@@ -6,7 +6,8 @@ source("R/cw-renamer.R")
 .traits.drop=c("mpo_gwas2","mpo", "mpo_meta","pr3_gwas2","pr3_meta", # unpublished
               "dm_myogen", "jdm_myogen", "myositis_myogen",  "NMO_combined", "NMO_IgGNeg",  "NMO_IgGPos", "pm_myogen", "renton_mg", "renton_mg_early", "renton_mg_late", # ssimp exists
               "anca_Neg",  "egpa", "mpo_Pos", # lmm exists
-              "CD_prognosis" # uncorrected
+              "CD_prognosis", # uncorrected
+              "ADHD","BIP","SCZ" # outside scope
               )
 ## core traits from Atle paper
 .traits.astle <- c('pdw','mpv','plt','irf','ret','rdw','hct','mch','mono','baso','eo','neut','lymph')  %>% paste0("ASTLE:",.)
@@ -16,7 +17,7 @@ reader <- function(what=c("sparse","fullfat")) {
     proj <- readRDS(switch(what,
                            fullfat="~/share/as_basis/basis-projection/results/13_traits.RDS",
                            sparse=#"~/share/as_basis/basis-projection/results/13_trait-sparse_with_meta.RDS"
-                             "~/share/as_basis/basis-projection/results/13_trait-sparsev2.RDS"
+                             "~/share/as_basis/basis-projection/results/13_trait-sparsev3.RDS"
                            ))
     ## attempt to add categories
     meta <- readRDS('~/share/as_basis/basis-projection/support/projection_meta.RDS')
@@ -30,10 +31,12 @@ reader <- function(what=c("sparse","fullfat")) {
     proj[trait.label=="systemic lupus erythematosis sle",trait.label:="SLE"]
     proj[trait=="li_ankspond",trait.label:="Turkish/Iranian"]
     proj[trait.label=="colitis not crohns or ulcerative colitis",trait.label:="colitis not Crohns or UC"]
+    proj[trait=="birdshot_retinopathy",trait.label:="birdshot chorioretinopathy"]
     proj[category=="Vasculitis",trait.label:=sub("  1","",trait.label)]
     proj[,category.label:=ifelse(trait.label==category,"",category)]
+    proj[trait=="birdshot_retinopathy",category.label:=""]
     ## drop some things not for publication
-    proj <- proj[category %notin% c("DELETE","tachmazidou_osteo","asthma") &
+    proj <- proj[category %notin% c("DELETE","tachmazidou_osteo","asthma","Myositis") &
                  trait %notin% .traits.drop]
     # trim to Astle core traits
     proj <- proj[category!="Astle" | trait %in% .traits.astle]
@@ -53,6 +56,9 @@ read_raw <- function(trait,pids=NULL) {
         return(rbindlist(lapply(trait, read_raw, pids=pids), use.names=TRUE))
     cat(trait,"\t")
     f <- trait
+    ## if(grepl("jia",trait)) {
+    ## files <- list.files("~/share/Data/GWAS/jia-mar-2019")
+    ## }
     if(!grepl("_source.RDS",f))
         f  %<>%  paste0(.,"_source.RDS")
     f %<>% file.path(DATA_DIR,.)
