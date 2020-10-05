@@ -1,0 +1,498 @@
+Pick datasets for CD, UC, AST from different ancestries
+
+```{r}
+library(data.table)
+library(cupcake)
+library(magrittr)
+#proj.dt <- cupcake::project_sparse(beta=log(M$or),seb=M$seb,pids=M$pid)[,trait:='EGPA'][]
+
+if(!file.exists("~/meta.RData")) {
+  ## devtools::install_github("tidyverse/googlesheets4")
+  library(googlesheets4)
+  gs4_deauth()
+  metadata <- read_sheet("https://docs.google.com/spreadsheets/d/16B4ANehcS4psdAFReTBQUJLYXuf5_RrpmjSPaASa2Nw/edit?usp=sharing", sheet = 1)
+  head(metadata)
+  meta <- metadata  %>% as.data.frame()  %>% as.data.table()
+  head(meta)
+  save(meta, file="~/meta.RData")
+} 
+(load("~/meta.RData"))
+
+tt <- with(meta, table(Population))
+tail(sort(tt),20)
+
+meta[grep("African",Population),.(Trait_long,Population)]
+
+meta[grep("FinnGen",Trait_long,invert=TRUE)][grep("asthma",Trait_long,ignore.case=TRUE),.(Trait_ID_2.0, Trait_long, Population)]  %>% unique()
+meta[grep("FinnGen",Trait_long,invert=TRUE)][grep("crohn",Trait_long,ignore.case=TRUE),.(Trait_ID_2.0, Trait_long, Population)]  %>% unique()
+meta[grep("FinnGen",Trait_long,invert=TRUE)][grep("colitis",Trait_long,ignore.case=TRUE),.(Trait_ID_2.0, Trait_long, Population)]  %>% unique()
+
+grep("Asian",meta$Population,value=TRUE) %>% unique()
+meta[grepl("Asian",meta$Population) & N1 > 5000,.(Trait_ID_2.0,Trait_long)]
+## RA_Kubo_BBJ_1-hg38.tsv.gz is RA in East Asians
+## RA_Ishigaki_doi101101795948_1-hg38.tsv.gz  same as previous
+## UC_Brant_27693347_1-hg38.tsv.gz UC in African Americans
+## 3:27
+## Maybe PBC_Nakamura_23000144_1-hg38.tsv.gz to compare with EUR PBC?
+## 3:28
+## We also have EAS Graves' disease, but I'm not sure we have EUR data for that trait
+## 3:29
+## ph242.1_PanUKBB_PanUKBBR1_1-hg38.tsv.gz we do :slightly_smiling_face:
+
+todo <- meta[Trait_ID_2.0 %in% c("RA","ph714.1","20002_1464",
+                                 "AST","20002_1111",
+                                 "CD","20002_1462",
+                                 "UC","20002_1463") , #& Chip!="ImmunoChip",
+             .(File_ID,First_Author,Trait_long,Population,Data_status,Notes,Chip,N0,N1)]
+todo[,Trait:=sub("-.*.tsv.gz","",File_ID)]
+todo <- todo[!grepl("Liu_26192919",Trait)] # Eur meta analysis with ichip
+todo <- todo[File_ID!="AST_Demenais_29273806_1-hg38.tsv.gz"] # input data
+todo <- todo[First_Author!="DeLange"] # input data
+todo <- todo[First_Author!="Cordell"] # input data
+todo <- todo[!(First_Author=="Okada" & Population=="European")] # input data
+## something up with Anderson processing
+## https://s3.us-west-2.amazonaws.com/secure.notion-static.com/a31366fc-e107-4d8a-a17c-0602890bd0cb/IMD_Report_20200609.html?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20200723%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20200723T103649Z&X-Amz-Expires=86400&X-Amz-Signature=0d5440462bd0a845cdfce71ba038162909c85ccca27c2a8ac010c6830e527aa7&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22IMD_Report_20200609.html%22
+todo <- todo[First_Author!="Anderson"]
+todo
+
+## library(gsheet)
+## library(readr)
+## m <- construct_download_url("https://docs.google.com/spreadsheets/d/16B4ANehcS4psdAFReTBQUJLYXuf5_RrpmjSPaASa2Nw/edit?usp=sharing", format = "csv", sheetid = 1)  %>% read_csv()
+
+todo[Data_status=="Specials"] # missing: myers - sex specific and small.
+## missing - Daya - African population - need to include
+```
+
+Load EUR projections of these data
+```{r}
+proj <- fread("~/share2/03-Bases/Projections/Projection_IMD_basis_20200728-v1.tsv")
+proj <- proj[!grepl("FinnGen|PanUKBB|Neale",Trait) |
+             grepl("20002_1111|20002_1462|20002_1463",Trait)]
+proj[,p:=2*pnorm(-abs(z))][,fdr:=p.adjust(p,method="BH")]
+proj[,sig:=sign(Delta-1.96*sqrt(Var.Delta))==sign(Delta+1.96*sqrt(Var.Delta))]
+table(proj$Trait %in% todo$Trait)
+with(proj[grep("ast",Trait,ignore.case=TRUE)],
+     sample(Trait,100))
+dim(proj)
+proj <- merge(proj,todo,by="Trait")
+proj[grep("20002_1111",Trait),Trait:="AST"]
+proj[grep("20002_1462",Trait),Trait:="CD"]
+proj[grep("20002_1463",Trait),Trait:="UC"]
+dim(proj)
+unique(proj$Trait)
+unique(proj$Population)
+
+## traits <- grep("^CD_",proj$Trait,value=TRUE)  %>%
+##   grep("FinnGen",.,invert=TRUE,value=TRUE)  %>%
+##   unique()
+
+library(cowplot)
+
+library(seaborn)
+proj[is.na(Chip),Chip:=""]
+proj[,class:=sub("_.*","",Trait)]
+table(proj$class)
+## proj[,x:=as.numeric(sub("PC","",PC))+as.numeric(factor(Trait))/12, by="class"]
+proj[Population %in% c("EUR","European", "European (UK)","European (Spanish)"),Population:="EUR"]
+proj[Population %in% c("AFR,AMR,CSA,EAS,EUR,MID","European + Asian + African + Hispanic/Latin American"),Population:="MIXED"]
+proj[Population %in% c("Asian","East Asian (China + Korea + Japan)", "East Asian (Chinese)", 
+                       "East Asian (Japanese)"),Population:="EAS"]
+proj[Population %in% c("African Americans"), Population:="AFR"]
+proj[Population %in% c("Indian","Iranian"), Population:="CSA"]
+proj[Population %in% c("European + Asian"), Population:="EAS,EUR"]
+
+proj <- proj[order(Population)]
+proj[,x:=as.numeric(sub("PC","",PC))+(1:.N)/12, by=c("PC","class")]
+proj[class=="AST",class:="asthma"]
+library(ggplot2)
+```
+
+Load sparse
+```{r}
+setwd("~/A")
+source("R/cw-files.R")
+(load(SPARSE_BASIS_FILE))
+dim(SNP.manifest)
+```
+
+Create international LD
+
+```{r}
+## write pids to files
+setwd("~/A")
+source("R/cw-reader.R")
+snps=readRDS(SNP_MANIFEST_FILE)
+snps[,c("chr","pos"):=tstrsplit(pid,":")]
+ss=split(snps,snps$chr)
+names(ss)
+for(nm in names(ss)) {
+  fwrite(snps[,.(chr,pos)],file=paste0("~/share/Data/reference/1000GP_Phase3/sparse_basis/snps.",nm),
+         quote=FALSE,sep="\t",col.names=FALSE)
+}
+
+SNP.manifest[,pos:=as.numeric(sub(".*:","",pid))]
+SNP.manifest[,chr:=as.numeric(chr)]
+## run make_plink.sh in ~/share/Data/reference/1000GP_Phase3
+
+## create international LD
+library(snpStats)
+library(annotSnpStats)
+for(pop in c("AMR","SAS","EAS","EUR","AFR")) {
+  ## if(file.exists(paste0("~/",pop,".RDS")))
+  ##   next
+  message(pop)
+  LD <- lapply(1:22, function(chr) {
+    chr <- as.character(chr)
+    cat(chr,"\t")
+    ## read in snpMatrix of given pop and chromosome from 1000 Genomes
+    file=paste0(Sys.getenv("HOME"),"/share/Data/reference/1000GP_Phase3/sparse_basis/",pop,".",chr)
+    sm=read.plink(file)
+    sm=annot.plink(sm)
+    colnames(sm) <- with(snps(sm), paste(chromosome,position,sep=":"))
+    pids <- colnames(sm)
+    sm.snps=as.data.table(snps(sm))[,longpid:=paste(chromosome,position,allele.1,allele.2,sep=":")]
+    matched=merge(sm.snps, SNP.manifest,
+                  by.x=c("chromosome","position","allele.1","allele.2"),
+                  by.y=c("chr","pos","ref_a2","ref_a1"))
+    keep=which(sm.snps$longpid %in% matched$longpid)
+    sm <- sm[, keep]
+    pids <- pids[keep]
+    ## by ld block
+    ichr=chr
+    ## snps.i=snps[chr==ichr & pid %in% pids]
+    snps.i=SNP.manifest[chr==ichr & pid %in% pids]
+    ss=split(snps.i, snps.i$ld.block)
+    lapply(ss, function(snpsub) {
+      ## print(head(snpsub,1))
+      sm.map <- match(snpsub$pid, pids)
+      r <- ld(sm[,sm.map], sm[,sm.map], stats = "R")
+      r[is.na(r)] <- 0
+      r
+    }) %>% bdiag_with_dimnames(.)
+  }) %>% bdiag_with_dimnames(.)
+  saveRDS(LD, file=paste0("~/",pop,".RDS"))
+}
+```
+
+read raw datasets and project with international LD
+
+```{r}
+todo
+files=paste0("/home/cew54/share2/02-Processed/",todo$File_ID) #,"-hg38.tsv.gz")
+cbind(files,
+file.exists(files))
+files=files[ file.exists(files) ]
+
+## get liftover to get pid38 coords
+trans=fread("/home/cew54/share2/03-Bases/IMD_basis/Manifest_build_translator.tsv")
+trans[,CHR19:=as.character(CHR19)]
+trans[,BP19:=as.character(BP19)]
+head(SNP.manifest)
+SNP.manifest[,c("CHR19","BP19"):=tstrsplit(pid,":")]
+SNP.manifest=merge(SNP.manifest,trans,by=c("CHR19","BP19"))
+SNP.manifest[,pid38:=paste(CHR38,BP38,sep=":")]
+
+for(f in files) {
+  message(f)
+  if(!file.exists(f))
+    next
+  trait=sub("-hg38.tsv.gz","",basename(f))
+  ofile=paste0("~/",trait,".RDS")
+  if(file.exists(ofile)) {
+    x=readRDS(ofile)[,File_ID:=basename(f)]
+    saveRDS(x,file=ofile)
+    next
+  }
+  x=fread(f,select=c("CHR38","BP38","BETA","SE","REF","ALT"))
+  x[,pid38:=paste(CHR38,BP38,sep=":")]
+  x=x[pid38 %in% SNP.manifest$pid38]
+  x=merge(x,SNP.manifest[,.(pid38,pid,ref_a1,ref_a2)],by="pid38")
+  x[,Trait:=trait][,File_ID:=basename(f)]
+  saveRDS(x,file=ofile)
+}
+
+## if(!exists("~/data.RDS")) {
+  data=lapply(files[file.exists(files)], function(f) {
+    trait=sub("-hg38.tsv.gz","",basename(f))
+    x=readRDS(file=paste0("~/",trait,".RDS"))
+    x=x[!is.na(REF)]
+    
+    ## if(!grepl("Julia",f)) { # actually, file seems fine, but second allele 50% wrong
+    x.alleles=paste(x$REF,x$ALT,sep="/")
+    y.alleles=paste(x$ref_a1,x$ref_a2,sep="/")
+    sw.class <- g.class(x.alleles,y.alleles)
+    x[,BETA:=ifelse(sw.class %in% c("nochange","comp"),BETA,-BETA)]
+    x=x[sw.class!="impossible"]
+    cat(f,"\n")
+    print(table(sw.class))
+    ## }
+    
+    if(basename(f) %in% proj$File_ID) {
+      x=merge(x,unique(proj[,.(File_ID,Population)]),by="File_ID")
+    } else {
+      x[,Population:="AFR"]
+    }
+    x[!is.na(BETA) & !is.na(SE) & SE!=0]
+  })
+data=data[!sapply(data,is.null)]
+  saveRDS(data, file="~/data.RDS")
+## }
+
+
+function (beta, seb, pids) 
+{
+    require(Matrix)
+    if (length(beta) != length(seb) || length(beta) != length(pids) || 
+        !length(beta)) 
+        stop("arguments must be equal length vectors > 0")
+    if (!all(pids %in% SNP.manifest$pid)) 
+        stop("all pids must be members of sparse basis (SNP.manifest$pid)")
+    if (length(pids) < 0.95 * nrow(rot.pca)) 
+        warning("more than 5% sparse basis snps missing")
+    b <- beta * shrinkage[pids] - beta.centers[pids]
+    proj <- b %*% rot.pca[pids, ]
+    v <- seb * shrinkage[pids] * rot.pca[pids, ]
+    var.proj <- t(v) %*% LD[pids, pids] %*% v %>% diag()
+    ctl <- (-beta.centers[pids]) %*% rot.pca[pids, ]
+    ret <- data.table(PC = colnames(proj), proj = proj[1, ], 
+        var.proj = var.proj, delta = (proj - ctl)[1, ])
+    ret$z = ret$delta/sqrt(ret$var.proj)
+    ret$p = pnorm(abs(ret$z), lower.tail = FALSE) * 2
+    copy(ret)
+}
+
+# new projection with EUR LD for comparison - just to check
+(load(SPARSE_BASIS_FILE))
+nproj=lapply(data, function(dd) {
+  p=with(dd[pid %in% colnames(LD)],
+         project.sparse(BETA, SE, pid))[,Trait:=unique(dd$Trait)][,File_ID:=unique(dd$File_ID)]
+  setnames(p,c("delta","var.proj","p"),c("Delta","Var.Delta","P"))
+  p 
+}) %>% rbindlist()
+nproj=merge(nproj, unique(proj[,.(File_ID,Trait,First_Author,Trait_long,Population,class,Chip)]),by="File_ID",all.x=TRUE)
+nproj[,Trait:=Trait.y]
+
+head(nproj)
+nproj <- nproj[order(Population)]
+nproj[,x:=as.numeric(sub("PC","",PC))+(1:.N)/12, by=c("PC","class")]
+nproj[class=="AST",class:="asthma"]
+
+m=merge(proj,nproj,by=c("File_ID","PC"),suffixes=c(".orig",".new"))
+head(m)
+ggplot(m,aes(x=Delta.orig,y=Delta.new)) + geom_point() + facet_wrap(~File_ID) + geom_abline() # all perfect match
+
+iproj=lapply(data, function(dd) {
+  pop=unique(dd$Population)
+  if(pop %in% c("MIXED","CSA,EUR","EAS,EUR"))
+    pop="EUR"
+  if(pop=="CSA")
+    pop="SAS"
+  f=paste0("~/",pop,".RDS")
+  cat(pop,"\t",f,"\n")
+  newLD=readRDS(f)
+  ## make project.sparse use the LD in the local environment
+  unlockBinding("LD", as.environment("package:cupcake"))
+  assign("LD", newLD, as.environment("package:cupcake"))
+  lockBinding("LD", as.environment("package:cupcake"))
+  p=with(dd[pid %in% colnames(LD)],
+         project.sparse(BETA, SE, pid))[,Trait:=unique(dd$Trait)][,File_ID:=unique(dd$File_ID)]
+  setnames(p,c("delta","var.proj","p"),c("Delta","Var.Delta","P"))
+  p 
+}) %>% rbindlist()
+
+iproj=merge(iproj, unique(proj[,.(File_ID,Trait,First_Author,Trait_long,Population,class,Chip)]),by="File_ID",all.x=TRUE)
+setdiff(iproj$File_ID,proj$File_ID)
+setdiff(proj$File_ID,iproj$File_ID)
+iproj[,Trait:=Trait.y]
+
+iproj[File_ID=="20002_1464_Neale_UKBB_1-hg38.tsv.gz",c("Trait","class","Population","First_Author"):=list("RA","RA","EUR","Neale")]
+iproj[File_ID=="AST_Daya_30787307_1-hg38.tsv.gz",c("Trait","class","Population","First_Author"):=list("asthma","asthma","AFR","Daya")]
+
+head(iproj)
+iproj <- iproj[order(Population)]
+iproj[,x:=as.numeric(sub("PC","",PC))+(1:.N)/12, by=c("PC","class")]
+iproj[class=="AST",class:="asthma"]
+
+
+```
+
+load original basis data
+```{r}
+setwd("~/A")
+source("R/cw-reader.R")
+basis <- read_basis()
+basis.DT <- data.table(trait=rownames(basis),basis) %>%
+  melt(.,id.vars='trait',value.name="delta",variable.name="PC")
+setnames(basis.DT,c("trait","delta"), c("class","Delta"))
+basis.DT[,fdr:=0]
+basis.DT=basis.DT[PC!="PC14"]
+unique(basis.DT$class)
+basis.DT[,Population:="input"][,Chip:=""]
+```
+
+combine datasets
+
+```{r}
+head(proj,2)
+head(iproj,2)
+head(basis.DT,2)
+comb=function(proj) {
+tmp <- rbind(proj,basis.DT[class %in% proj$class],fill=TRUE)
+## keep only significant studies
+sigs <- tmp[P<0.05 #fdr<0.01
+            | Population=="input",.(Trait,class)]%>% unique()
+tmp <- merge(tmp,sigs,by=c("class","Trait"))
+## tmp <- tmp[Population=="input" | First_Author!="Anantharaman",]
+tmp
+}
+tmp=comb(proj)
+itmp=comb(iproj)
+ntmp=comb(nproj)
+
+
+
+theme_set(theme_cowplot(font_size=8))
+
+itmp=itmp[Population=="input" |
+          File_ID %in% c("20002_1111_Neale_UKBB_1-hg38.tsv.gz", "AST_Ishigaki_doi101101795948_1-hg38.tsv.gz",
+  "AST_Daya_30787307_1-hg38.tsv.gz",
+  "20002_1464_Neale_UKBB_1-hg38.tsv.gz", "RA_Okada_24390342_2-hg38.tsv.gz",
+  "RA_Kubo_BBJ_1-hg38.tsv.gz",
+  "RA_Ishigaki_doi101101795948_1-hg38.tsv.gz",
+  "20002_1463_Neale_UKBB_1-hg38.tsv.gz", "UC_Brant_27693347_1-hg38.tsv.gz",
+  "20002_1462_Neale_UKBB_1-hg38.tsv.gz", "CD_Brant_27693347_1-hg38.tsv.gz")]
+
+addx=function(tmp) {
+  tmp=tmp[order(Population,File_ID)]
+  tmp[,x:=1:.N, by=c("PC","class")]
+}
+itmp%<>%addx()
+cols <- seaborn:::SEABORN_PALETTES[[2]][1:7]
+names(cols) <- sort(unique(tmp$Population)) %>% setdiff(.,"input") %>% c(.,"input")
+cols["input"] <- "black" # match main figures
+maxn <- max(itmp$x)
+
+plotter <- function(i,tmp) {
+  ggplot(#[Trait %in% traits],
+       mapping=aes(y=x,
+           x=Delta,
+           col=Population)) +
+  geom_point(aes(shape=Population=="input"),stroke=1,size=2,data=tmp[(Population=="input" | P>0.05) & PC==paste0("PC",i)]) +
+  geom_point(aes(fill=Population),stroke=2,size=2,data=tmp[P<0.05 & PC==paste0("PC",i)]) +
+    geom_linerange(aes(xmin=Delta-1.96*sqrt(Var.Delta),
+                       xmax=Delta+1.96*sqrt(Var.Delta)),
+                   data=tmp[P<0.05 & PC==paste0("PC",i)]) +
+  scale_y_continuous(breaks=1:maxn,expand=expansion(mult=0,add=0.6)) +
+  ## scale_y_continuous(breaks=1:maxn) +
+  scale_shape_manual("Input Data",values=c("TRUE"=22,"FALSE"=21)) +
+  background_grid(major="y") +
+  ## geom_hline(yintercept=0) +
+  geom_vline(xintercept=0,linetype="dashed") +
+  ## facet_wrap(~class,scales="free_x",nrow=1) +
+  facet_grid(class~.,scales="free_y",space="free_y") +
+  theme(legend.position="none", #legend.position="bottom",legend.box="vertical",
+        strip.background=element_blank(),
+        ## axis.line.y=element_blank(),
+        ##axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+        axis.text.x=element_blank(),axis.ticks.x=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank()) +
+  scale_colour_manual(values=cols)+
+  scale_fill_manual(values=cols,guide=FALSE)+
+  ggtitle(paste0("PC",i))
+}
+
+## plot_grid(plotter(1,tmp) + theme(legend.position="bottom"),
+##           plotter(1,itmp) + theme(legend.position="bottom"),
+##           nrow=1)
+
+plots <- lapply(1:13,plotter,itmp)  
+legend <- get_legend(
+  plots[[1]] + theme(legend.position="bottom",
+                     legend.box="vertical",
+                     legend.box.margin = margin(0, 0, 0, 12))
+)
+
+
+itmp[,label:=paste(First_Author,Population,sep="_")][,label:=sub("NA_","",label)]
+keydata <- unique(itmp[,.(First_Author,Chip,Population,label,Trait,x,class)])
+
+key <- ggplot(keydata) +
+  geom_text(aes(y=x,label=label,col=Population),x=1,hjust=1,size=2) +
+  scale_y_continuous(breaks=1:maxn,expand=expansion(mult=0,add=0.6)) +
+  background_grid(major="y") +
+  facet_grid(class~.,scales="free_y",space="free_y") +
+  scale_colour_manual(values=cols)+
+  theme(legend.position="none", #legend.position="bottom",legend.box="vertical",
+        strip.background=element_blank(),
+        ## axis.line.y=element_blank(),
+        ##axis.text.y=element_blank(),axis.ticks.y=element_blank(),
+        axis.title.y=element_blank())  +
+  ggtitle("Studies")
+ ## key
+
+bottomrow <- plot_grid(plots[[13]],key,legend,
+                       align="h",axis="y",
+                       #labels=c("B","","C","","D",""),
+                       nrow=1,rel_widths=c(1,1,2))
+## bottomrow
+
+toprow <- plot_grid(plotlist=plots[1:12],nrow=3,ncol=4)
+p <- plot_grid(toprow,bottomrow,nrow=2,rel_heights=c(3,1))
+ggsave("~/basis-ancestry-plot.pdf",height=10,width=8)
+ggsave("~/basis-ancestry-plot.",height=10,width=8)
+ggsave("~/A/figures/suppfig-ancestry.pdf",height=10,width=8)
+
+p
+
+````
+
+Alternative, x-y plots
+
+```{r}
+xv="20002_1462_Neale_UKBB_1-hg38.tsv.gz"20002_1462_Neale_UKBB_1-hg38.tsv.gz""
+yv="CD_Brant_27693347_1-hg38.tsv.gz""20002_1462_Neale_UKBB_1-hg38.tsv.gz"
+
+plotpair=function(xv,yv) {
+m=merge(iproj[File_ID==xv], iproj[File_ID==yv], by=c("PC"), suffixes=c(".x",".y"))
+head(m)
+ggplot(m, aes(x=Delta.x,y=Delta.y)) +
+  geom_linerange(aes(xmin=Delta.x-1.96*sqrt(Var.Delta.x),
+                     xmax=Delta.x+1.96*sqrt(Var.Delta.x)),col="dodgerblue") +
+  geom_linerange(aes(ymin=Delta.y-1.96*sqrt(Var.Delta.y),
+                     ymax=Delta.y+1.96*sqrt(Var.Delta.y)),col="dodgerblue") +
+  geom_point(col="dodgerblue") +
+  geom_abline() +
+  geom_hline(yintercept=0,col="grey") +
+  geom_vline(xintercept=0,col="grey") +
+  labs(y=paste(unique(m$Population.y), unique(m$First_Author.y)),
+       x=paste(unique(m$Population.x), unique(m$First_Author.x))) +
+  ggtitle(unique(m$class.x))
+}
+
+unique(iproj[,.(File_ID,class,Population)])
+
+plots=list(#CD
+  plotpair("20002_1462_Neale_UKBB_1-hg38.tsv.gz","CD_Brant_27693347_1-hg38.tsv.gz"),
+           plotpair("20002_1462_Neale_UKBB_1-hg38.tsv.gz","20002_1462_PanUKBB_PanUKBBR1_1-hg38.tsv.gz"),
+                                        ## asthma
+  ## plotpair("20002_1111_Neale_UKBB_1-hg38.tsv.gz", "AST_Anantharaman_22188591_1-hg38.tsv.gz"),
+  plotpair("20002_1111_Neale_UKBB_1-hg38.tsv.gz", "AST_Ishigaki_doi101101795948_1-hg38.tsv.gz"),
+  ## plotpair("20002_1111_Neale_UKBB_1-hg38.tsv.gz", "AST_Demenais_29273806_2-hg38.tsv.gz"),
+  plotpair("20002_1111_Neale_UKBB_1-hg38.tsv.gz", "AST_Daya_30787307_1-hg38.tsv.gz"),
+  ## RA
+  plotpair("20002_1464_Neale_UKBB_1-hg38.tsv.gz", "RA_Okada_24390342_2-hg38.tsv.gz"),
+  ## plotpair("20002_1464_Neale_UKBB_1-hg38.tsv.gz", "RA_Okada_24390342_3-hg38.tsv.gz"),
+  plotpair("20002_1464_Neale_UKBB_1-hg38.tsv.gz", "RA_Kubo_BBJ_1-hg38.tsv.gz"),
+  plotpair("20002_1464_Neale_UKBB_1-hg38.tsv.gz", "RA_Ishigaki_doi101101795948_1-hg38.tsv.gz"),
+  ## UC
+  plotpair("20002_1463_Neale_UKBB_1-hg38.tsv.gz", "UC_Brant_27693347_1-hg38.tsv.gz"),
+  ## CD
+  plotpair("20002_1462_Neale_UKBB_1-hg38.tsv.gz", "CD_Brant_27693347_1-hg38.tsv.gz"))
+  
+  
+plot_grid(plotlist=plots)
+
+  
+           
+```

@@ -20,7 +20,7 @@ indep_snps <- function(dt,LD,thin=TRUE,rthr=0.1) {
 }
 
 bdiag_with_dimnames <- function(lst) {
-    library(Matrix)
+    require(Matrix)
     ret <- Matrix::bdiag(lst)
     rownames(ret) <- colnames(ret) <- unlist(lapply(lst,rownames))
     ret

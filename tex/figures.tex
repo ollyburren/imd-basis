@@ -11,17 +11,24 @@
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
 % Set the right side of the footer to be the page number
-\rfoot{\thepage}
+\rfoot{} %\rfoot{\thepage}
 \usepackage{graphicx}
 \usepackage{pdfpages}
 % \pagestyle{empty} % no page numbers 
 \begin{document}
-\setcounter{page}{21}
+\setcounter{page}{33}
 \begin{figure}
   \centering
-  \includegraphics[width=\textwidth]{overview1}
-  \caption{Schematic of basis creation and projection. Basis creation: GWAS summary statistics for related traits are combined to create a matrix, M (n x m), of harmonised effect sizes ($\hat\beta$) and a learned vector of shrinkage values for each SNP. After multiplying each row of M by the shrinkage vector, PCA is used to decompose M into  component and loading matrices. Basis projection: External trait effects are harmonised with respect to the basis, shrinkage applied and the resultant vector is multiplied by the basis loading matrix to obtain component scores which can then be used for further analyses.}
-  \label{fig:1}
+  \includegraphics[width=\textwidth]{overview_trimmed}
+  \caption{Schematic of basis creation and projection. Basis creation: GWAS summary statistics for
+related traits are combined to create a matrix, M (n x m), of harmonised effect sizes ( β̂ ) and a learned
+vector of shrinkage values for each SNP. After multiplying each row of M by the shrinkage vector, PCA
+is used to decompose M into component and loading matrices. Basis projection: For an independent set of studies, trait effects
+are harmonised with respect to the basis, shrinkage applied and the resultant vector is multiplied by the
+basis loading matrix to obtain component scores. These component scores can be used for testing hypotheses of the form that a weighted average of effect sizes in the test GWAS is non-zero, because the weights (basis loading matrix) are learnt from an independent set of large GWAS.%
+% Schematic of basis creation and projection. Basis creation: GWAS summary statistics for related traits are combined to create a matrix, M (n x m), of harmonised effect sizes ($\hat\beta$) and a learned vector of shrinkage values for each SNP. After multiplying each row of M by the shrinkage vector, PCA is used to decompose M into  component and loading matrices. Basis projection: External trait effects are harmonised with respect to the basis, shrinkage applied and the resultant vector is multiplied by the basis loading matrix to obtain component scores which can then be used for further analyses.
+}
+[l]
 \end{figure}
 
 
@@ -34,30 +41,37 @@
 
 \begin{figure}
   \centering
+  \includegraphics[width=\textwidth]{suppfig-ukbb-sig-by-imd}
+  \caption{Of 312 UKBB self-reported traits projected onto the basis, 27 were significant at FDR < 1\%, and IMD were enriched amongst this set, with 63\% of IMD showing significance compared to $<3\%$ of non-IMD traits. Each trait projected is shown according to FDR (-log10 scale, axis  truncated at FDR=$10^{{-6}}$ for display) and number of cases.  All IMD (yellow) and all significant non-IMD traits (grey) are labelled.}
+  \label{sfig:2}
+\end{figure}
+
+\begin{figure}
+  \centering
   \includegraphics[width=0.9\textwidth]{figure3-big-cluster.pdf}
-  \caption{Hierarchical clustering of projected diseases significantly different from control (FDR < 1\%) or of small sample size. Coloured labels are used to distinguish UKBB (grey) and other GWAS (green) datasets. Heatmaps indicate delta values for each disease on each component PC1-PC13, with grey indicating 0 (no difference from control), and darker shades of blue or magenta showing departure from controls in one direction or the other. An overlaid * indicates delta was significantly non zero (FDR<0.01). Roman numerals indicate clusters described in the text. Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, EO = extended oligo, ERA = juvenile enthesitis-related arthritis, IgGPos = IgG positive, JIA = juvenile idiopathic arthritis, MPO+ = myeloperoxidase positive NMO = neuromyelitis optica, PO = persistent oligo, PR3+ = proteinase 3 positive, PsA = psoriatic arthritis, RF +/- = polyoligo rheumatoid factor positive/negative, SLE = systemic lupus erythematosus, UC = ulcerative colitis.}
+  \caption{Hierarchical clustering of projected diseases significantly different from control (FDR < 1\%) or of small sample size. Coloured labels are used to distinguish UKBB (grey) and other GWAS (green) datasets. Heatmaps indicate delta values for each disease on each component PC1-PC13, with grey indicating 0 (no difference from control), and darker shades of blue or magenta showing departure from controls in one direction or the other. An overlaid * indicates delta was significantly non zero (FDR<0.01). Roman numerals indicate clusters described in the text. Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, EO = extended oligo, ERA = juvenile enthesitis-related arthritis, IgGPos = IgG positive, JIA = juvenile idiopathic arthritis, MPO+ = myeloperoxidase positive NMO = neuromyelitis optica, PO = persistent oligo, PR3+ = proteinase 3 positive, PsA = psoriatic arthritis, RF +/- = polyarticular rheumatoid factor positive/negative, SLE = systemic lupus erythematosus, UC = ulcerative colitis.}
   \label{fig:3}
 \end{figure}
 
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{fig4-pc1}
-  \caption{Forest plots showing projected values for diseases significant overall and on components 1. Grey squares dots indicate projected data and 95\% confidence intervals. Red dots indicate the 13 IMD used for basis construction and for which no confidence interval is available. Points to the right of each line indicate disease classification according to whether  they have specific autoantibodies that are either directly implicated in disease pathogenesis ("pathogenic") or which are specific to the disease, but not involved in pathogenesis ("non-pathogenic"). Diseases that are not associated with specific autoantibodies were classified as "none". Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, EO = extended oligo, ERA = juvenile enthesitis-related arthritis, IgGPos = IgG positive, JIA = juvenile idiopathic arthritis, LADA = latent autoimmune diabetes in adults, NMO = neuromyelitis optica, PO = persistent oligo, PsA = psoriatic arthritis, RF +/- = polyoligo rheumatoid factor positive/negative, SLE = systemic lupus erythematosus, UC = ulcerative colitis.}
+  \caption{Forest plots showing projected values for diseases significant overall and on components 1. Grey squares dots indicate projected data and 95\% confidence intervals. Red dots indicate the 13 IMD used for basis construction and for which no confidence interval is available. Points to the right of each line indicate disease classification according to whether  they have specific autoantibodies that are either directly implicated in disease pathogenesis ("pathogenic") or which are specific to the disease, but not involved in pathogenesis ("non-pathogenic"). Diseases that are not associated with specific autoantibodies were classified as "none". Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, EO = extended oligo, ERA = juvenile enthesitis-related arthritis, IgGPos = IgG positive, JIA = juvenile idiopathic arthritis, LADA = latent autoimmune diabetes in adults, NMO = neuromyelitis optica, PO = persistent oligo, PsA = psoriatic arthritis, RF +/- = polyarticular rheumatoid factor positive/negative, SLE = systemic lupus erythematosus, UC = ulcerative colitis.}
   \label{fig:4}
 \end{figure}
 
 
 \begin{figure}
   \centering
-  \includegraphics[width=\textwidth]{fig5-pc13-mr.pdf}
-  \caption{Forest plot of significant traits on PC13 (left panel) which also shows association with eosinophil counts in blood21. Mendelian randomisation (MR) analysis (right panel) using PC13 driver SNPs (purple) or SNPs significantly associated ($p<10^{-3}$) with eosinophil counts (green).  Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, JIA = juvenile idiopathic arthritis, MPO+ = myeloperoxidase-positive, PO = persistent oligo, RF- = polyoligo rheumatoid factor negative.}
+  \includegraphics[width=\textwidth]{fig4-pc13.pdf}
+  \caption{Forest plot of significant traits on PC13 which also shows association with eosinophil counts in blood.  Abbreviations: ANCA- = anti-neutrophil cytoplasmic antibody negative, Ank. Spond = ankylosing spondylitis, EGPA = eosinophilic granulomatosis with polyangiitis, JIA = juvenile idiopathic arthritis, MPO+ = myeloperoxidase-positive, PO = persistent oligo, RF- = polyarticular rheumatoid factor negative.}
   \label{fig:4}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=\textwidth]{fig6-pc3-mr.pdf}
-  \caption{Forest plot of significant traits on PC3 (left panel) which also shows association with serum cytokine levels of IP-10 (CXCL10) and MIG (CXCL9). Mendelian randomisation analysis of IP-10 (middle panel) or MIG (right panel) using PC3 driver SNPs finds these cytokines to be associated with IMD risk (purple), but MR analysis using only SNPs significantly associated ($p<10^{-3}$) with either cytokine (green) do not show association. Abbreviations: EO = extended oligo, PO = persistent oligo,  RF +/- = polyoligo rheumatoid factor positive/negative, UC = ulcerative colitis.}
+  \includegraphics[width=\textwidth]{fig4-pc3.pdf}
+  \caption{Forest plot of significant traits on PC3 which also shows association with serum cytokine levels of IP-10 (CXCL10) and MIG (CXCL9). Abbreviations: EO = extended oligo, PO = persistent oligo,  RF +/- = polyarticular rheumatoid factor positive/negative, UC = ulcerative colitis.}
   \label{fig:4}
 \end{figure}
 

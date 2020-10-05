@@ -53,22 +53,26 @@ reader <- function(what=c("sparse","fullfat")) {
 ## all.filez <- list.files(path=DATA_DIR,pattern='*.RDS',full.names=TRUE)
 read_raw <- function(trait,pids=NULL) {
     if(length(trait) > 1)
-        return(rbindlist(lapply(trait, read_raw, pids=pids), use.names=TRUE))
+        return(rbindlist(lapply(trait, read_raw, pids=pids), use.names=TRUE, fill=TRUE))
     cat(trait,"\t")
     f <- trait
-    ## if(grepl("jia",trait)) {
-    ## files <- list.files("~/share/Data/GWAS/jia-mar-2019")
-    ## }
     if(!grepl("_source.RDS",f))
         f  %<>%  paste0(.,"_source.RDS")
     f %<>% file.path(DATA_DIR,.)
+    ## if(grepl("jia.*19",trait)) {
+    ##   f  %<>%  sub(DATA_DIR,"~/scratch/jia-source",.)
+    ## }
     dat <- readRDS(f)
     if(is.character(dat$p.value))
         dat[,p.value:=as.numeric(p.value)]
+    if(is.null(key(dat)))
+      setkey(dat, "pid")
     if(!is.null(pids))
         dat <- dat[pids,]
     if(!("beta" %in% names(dat)))
         dat[,beta:=log(or)]
+    if(grepl("jia.*19",trait)) # reference allele swap
+      dat[,beta:=-beta]
     if(!("seb" %in% names(dat)))
         dat[,seb:=abs(beta/qnorm(p.value/2,lower.tail=FALSE))]
     dat

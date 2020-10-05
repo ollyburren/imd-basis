@@ -100,6 +100,65 @@ stats <- cbind(qlim,quants,nquants)
 print(stats)
 ## cbind(stats,stats.old)
 
+## formalise search
+
+  ##' calculate use vector for given quantile and PC
+  ##' @param q quantile
+  ##' @param j PC
+  ##' @return use vector
+  f0 <- function(q, j, X) {
+    quants <- quantile(-abs(X),q)
+    (-abs(X)) < quants
+  }
+  
+  ##' correlation with full data for given quantile and PC
+  ##' @param q quantile
+  ##' @param j PC
+  ##' @return cor
+  f <- function(q, j, zm, pc.emp) {
+    use <- f0(q,j, pc.emp$rotation[,j])
+    beta0 = zm %*% ifelse(use, pc.emp$rotation[,j], 0)
+    cor(beta0, pc.emp$x[,j])
+  }
+
+  ##' Do search for given PC
+  ##' @param j PC
+  ##' @return quantile
+  g <- function(j, mincor, zm, pc.emp) {
+    n <- nrow(pc.emp$rotation) # max number
+    qi <- c(1/n,1) # test quantile
+    ni <- floor(qi * n) # test number
+    while(ni[2]-ni[1]>1) {
+      ## check midpoint
+      newq <- mean(qi)
+      newc <- f(newq, j, zm, pc.emp)
+      if(newc > mincor) {
+        qi[2] <- newq
+      } else {
+        qi[1] <- newq
+      }
+      ni <- floor(qi * n) # test number
+      ## cat(qi,"\t",ni,"\n")
+    }
+    return(qi[2])
+  }
+
+
+find_sparse_q <- function(basis.mat.emp, pc.emp, nc=NULL, mincor=0.999) {
+  if(is.null(nc))
+    nc <- ncol(pc.emp$rotation)-1
+  zm <- scale(basis.mat.emp,center=TRUE,scale=FALSE) # centered input
+  q <- sapply(1:nc, g, mincor=mincor, zm=zm, pc.emp=pc.emp)
+  summ <- cbind(PC=1:nc, q=q, n=floor(q * nrow(pc.emp$rotation)))
+  user <- mapply(f0, q=q, j=1:nc, X=lapply(1:nc, function(j) pc.emp$rotation[,j]))
+  print(summ)
+  invisible(list(summ=summ, user=user))
+}
+
+ret <- find_sparse_q(basis.mat.emp, pc.emp)
+ret
+
+
 ## 0.001 is good
 X <- pc.emp$rotation[,1:13]
 use <- matrix(TRUE,nrow(X),ncol(X),dimnames=dimnames(X))

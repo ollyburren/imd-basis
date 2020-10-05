@@ -198,6 +198,11 @@ p.pc1 <- pc1 + theme_cowplot(12)
         legend.justification = "right",
         legend.text=element_text(size=rel(0.8)),
         legend.title=element_text(size=rel(1)),
+panel.spacing = grid::unit(2, "lines"),
+            strip.placement = "outside",
+strip.background=element_blank(),
+strip.text = element_text(hjust = 1,vjust=1,face="bold"),
+strip.text.y.left = element_text(angle=0),
         ## axis.text=element_text(size=rel(1.3)),
         ## strip.text=element_text(size=rel(1.3)),
         ## axis.line=element_blank(),
@@ -238,7 +243,7 @@ p.pc3 <-  forest_labelled(proj.dat, #proj[trait %in% c(traits),],#,traits.i),],
                      focal=traits)
 p.pc3
 save(p.pc3, file="~/basis-pc3-forest.RData")
-ggsave("figures/fig4-pc3.pdf",height=10,width=8)
+ggsave("figures/fig4-pc3.pdf",height=9,width=8)
 
 ## cytokines for urs
 ## proj <- bak[!(category %in% c("astle_blood","geneatlas_icd","geneatlas_srd","roederer_immunophenotypes"))]
