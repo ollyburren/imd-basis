@@ -18,8 +18,8 @@ clean:
 help : Makefile
 	@sed -n 's/^#!//p' $<
 
-figures/figures.pdf : tex/figures.tex figures/figure2-hclust-rivas.png figures/figure3-big-cluster.pdf figures/fig4-pc1.pdf figures/fig6-pc3-mr.pdf
-	cp tex/figures.tex tex/overview1.pdf figures/
+figures/figures.pdf : tex/figures.tex figures/figure2-hclust-rivas.png figures/figure3-big-cluster.pdf figures/fig4-pc1.pdf figures/fig4-pc3.pdf
+	cp tex/figures.tex tex/overview_trimmed.pdf figures/
 	cd figures && pdflatex figures && cd ..
 
 figures/suppfigures.pdf : tex/suppfigures.tex figures/suppfig-forest-pc13.pdf figures/suppfig-ukbb-sig-by-imd.pdf figures/suppfig-consistency.pdf figures/suppfig-sparsesig-qqplots.pdf
@@ -46,18 +46,16 @@ figures/figure3-big-cluster.pdf : R/figure3-cluster.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
 
 #! figures/fig4-pc1.pdf also makes suppfig forests
-figures/suppfig-forest-pc13.pdf figures/fig4-pc1.pdf : R/suppfig-forests.R
+figures/suppfig-forest-pc13.pdf figures/fig4-pc1.pdf figures/fig4-pc3.pdf :: R/suppfig-forests.R
 	Rscript $< > $(<)out 2>&1
-
-## needs to be run after forests
-figures/fig6-pc3-mr.pdf : R/mr-analysis.R $(SPARSEDRIVERS) $(DEPENDS) figures/suppfig-forest-pc13.pdf 
-	qR.rb -j MR -r $< 
 
 figures/suppfig-ukbb-sig-by-imd.pdf : R/ukbb-by-imd.R $(DEPENDS)
 	Rscript $< > $(<)out 2>&1
 
 stats-sparse-drivers-significance.txt figures/suppfig-sparsesig-qqplots.pdf : R/table1.R
 	Rscript $< > $(<)out 2>&1
+
+figures/suppfig-proportionality.pdf : R/proportionality-v2.R
 
 # $(OBSDATA) : extract-data-for-paulk.R $(DEPENDS)
 # 	Rscript $< > $(<)out 2>&1
@@ -75,4 +73,3 @@ stats-sparse-drivers-significance.txt figures/suppfig-sparsesig-qqplots.pdf : R/
 # figures/figures.pdf: figures/figures.tex figures/figure2-hclust-shrinkage.png
 # 	cd figures && pdflatex figures && cd ..
 
-# ## TODO: bb-icd comparison, code in comments in consistency.R

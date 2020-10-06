@@ -153,7 +153,7 @@ data[,theoretical:=stats::qexp((1:.N)/(.N+1)),by=lab]
 pqq <- ggplot(data,aes(x=theoretical,y=sample,group=lab)) +
   geom_point(aes(col=sigcol)) +
   geom_abline() +
-  facet_wrap(.~lab,scales="free_y") +
+  facet_wrap(.~lab,scales="free_y",nrow=6) +
   scale_colour_manual("FDR<0.01",values=c("FALSE"="grey","TRUE"="black")) +
   labs(x="Expected",y="Observed") +
   theme(legend.position="bottom")
@@ -201,6 +201,13 @@ sig[,c("chr","pos"):=lapply(tstrsplit(pid,":"),"as.numeric")]
 ## when 2+ snps are significant near each other, drop less significant ones
 ssig <- split(sig,sig$trait)
 x=ssig[[1]]
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title
+##' @param x
+##' @return
+##' @author Chris Wallace
 f <- function(x) {
     x <- x[order(p.value)]
     xld <- as.matrix(LD[x$pid,x$pid])
@@ -272,6 +279,7 @@ sig[,.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.disea
 sig[order(p.value),.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)]  
 
 
+sig[category.label=="JIA",.(category.label,trait.label,pid,p.value,fdr,basis.diseases)]
 
 fwrite(sig[,.(category.label,trait.label,pid,RefSNP_id,p.value,fdr,genelist,basis.diseases,gwsig,other.evidence,novel,comments)],
        file="figures/table-drivers-significant.csv") 

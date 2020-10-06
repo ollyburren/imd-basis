@@ -57,6 +57,7 @@ plotsumm <- function(...,var="p.wcors") {
     levels(tmp$cutfdr)
     levels(tmp$cutfdr) <- c("<0.01","<0.1","<0.5","<1")
     tmp[,logp:=-log10(tmp[[var]])]
+    ## tmp[,logp:=-log10(tmp[[var]])]
     ## tmp[,logp:=(tmp[[var]])]
     ggplot(tmp[!is.na(newfdr)], aes(x=cutfdr,
                     y=logp,
@@ -65,10 +66,15 @@ plotsumm <- function(...,var="p.wcors") {
         facet_grid(.~cat) +
         background_grid("y","none") +
         xlab("FDR category") +
-        ylab("Consistency (Spearman FDR)") +
+      ylab("Consistency (Spearman FDR)") +
+      scale_y_continuous(breaks=c(0,2,4,6,8),
+                         labels=c(0,0.01,expression(10^-4),expression(10^-6),expression(10^-8))) + #c("0","0.01","10^-4","10^-6","10^-8"))) +
         scale_fill_discrete("Trait group") +
         theme(legend.position="none")
 }
+
+    plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="fdr.wcors") +
+  geom_hline(yintercept=2,linetype="dashed",size=1)
 
 ################################################################################
 library(Matrix)
@@ -167,14 +173,11 @@ DT5=read_raw(wanted, pids=rownames(use.pca))
 SUMM5 <- fcons(DT5,res5,"Flow")
 
 ################################################################################
-## pqtl?
-
-################################################################################
 ## plot
 plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="p.wcors") +
   geom_hline(yintercept=1,linetype="dashed",size=1)
-plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="fdr.wcors") ## +
-  ## geom_hline(yintercept=1,linetype="dashed",size=1)
+plotsumm(SUMM1,SUMM2,SUMM3,SUMM4,SUMM5,var="fdr.wcors") +
+  geom_hline(yintercept=2,linetype="dashed",size=1)
              
 ggsave("~/share/as_basis/figures/suppfig-consistency.pdf",height=6,width=8,scale=1.2)
 

@@ -46,7 +46,8 @@ table(proj$imd)
 length(unique(imd.trait)) * 13
 
 
-fdr <- proj[PC=="PC1" & trait.label!="unclassifiable"][order(fdr.overall)]
+fdr <- proj[PC=="PC1"][order(fdr.overall)]
+dim(fdr)
 
 library(gsheet)
 N <- gsheet2tbl("https://docs.google.com/spreadsheets/d/1bej1XFq6WwvTlURxhRFmfad2X0BGWZXf7D6IlK6WN0Q/edit#gid=1742820075")  %>%
@@ -54,11 +55,14 @@ N <- gsheet2tbl("https://docs.google.com/spreadsheets/d/1bej1XFq6WwvTlURxhRFmfad
 
 fdr[,Trait:=sub(".*:","",trait)]
 fdr <- merge(fdr,N,by="Trait")
+fdr <- fdr[!((trait=="UKBB_NEALE:SRD:unclassifiable" & N1 < 1000) |
+             (trait=="UKBB_NEALE:SRC:unclassifiable" & N1 > 1000))] # distinguish two kinds of unclassifiable
+
 
 library(ggrepel)
 
 fdr <- fdr[order(N1)]
-fdr[,trait.label:=factor(as.character(trait.label),levels=fdr$trait.label)]
+fdr[,trait.label:=factor(as.character(trait.label),levels=unique(fdr$trait.label))]
 fdr[,sig:=fdr.overall<0.01]
 mx <- max(fdr$N1)
 
@@ -76,7 +80,7 @@ ggplot(fdr,aes(x=trait.label,fill=imd,col=sig)) +
   theme(axis.text.x=element_text(angle=90,vjust=0.5,hjust=1))
 
 fdr <- fdr[order(fdr.overall)]
-fdr[,trait.label:=factor(as.character(trait.label),levels=fdr$trait.label)]
+fdr[,trait.label:=factor(as.character(trait.label),levels=unique(fdr$trait.label))]
 set.seed(42)
 fdr[,ry:=runif(1:nrow(fdr))]
 ggplot(fdr,aes(x=trait.label,fill=imd)) +
@@ -106,7 +110,7 @@ p <- ggplot(fdr,aes(x=pmin(-log10(fdr.overall),6), y=N1,fill=imd)) +
   scale_colour_manual(values=c("IMD"="#fcfdbf","Other"="grey70")) +
   scale_fill_manual(values=c("IMD"="#fcfdbf","Other"="grey90")) +
   scale_y_log10("Number of cases",breaks=10^(c(2,3,4,5)),labels=c("100","1,000","10,000","100,000")) +
-  scale_x_continuous("-log10 FDR") +
+  scale_x_continuous("-log10 FDR",limits=c(0,6.5)) +
   background_grid()+
   guides(fill = guide_legend(title = "Disease",
                              override.aes = aes(label = ""))) +
@@ -138,5 +142,5 @@ ggdraw() +
   draw_plot( plot = x, x = 0, y = 0.75, width = .4, height = .25 )
 
 
-ggsave("figures/suppfig-ukbb-sig-by-imd.pdf",height=6,width=8,scale=1.5)
+ggsave("figures/suppfig-ukbb-sig-by-imd.pdf",height=6,width=8,scale=1.6)
 
